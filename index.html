@@ -4,7 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>健身打卡 · 100 天对赌计划</title>
-  <link rel="stylesheet" href="styles.css?v=5">
+
+  <!-- PWA：添加到主屏幕 -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#10b981">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="健身打卡">
+
+  <link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
   <div class="app">
@@ -103,9 +114,16 @@
     </div>
   </div>
 
-  <script src="js/logic.js?v=5"></script>
-  <script src="js/store.js?v=5"></script>
-  <script src="js/ui.js?v=5"></script>
-  <script src="js/app.js?v=5"></script>
+  <script src="js/logic.js?v=6"></script>
+  <script src="js/store.js?v=6"></script>
+  <script src="js/ui.js?v=6"></script>
+  <script src="js/app.js?v=6"></script>
+  <script>
+    // PWA：http/https 下注册 Service Worker（离线可用）；file:// 打开时自动跳过
+    if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+      window.addEventListener('load', () =>
+        navigator.serviceWorker.register('sw.js').catch((e) => console.warn('[FT] SW 注册失败', e)));
+    }
+  </script>
 </body>
 </html>
