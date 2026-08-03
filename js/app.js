@@ -133,8 +133,10 @@ const FTApp = {
     document.getElementById('btn-import').addEventListener('click', () =>
       document.getElementById('import-file').click());
     document.getElementById('import-file').addEventListener('change', (e) => this.importData(e));
-    document.getElementById('celebration-close').addEventListener('click', () =>
-      document.getElementById('celebration').classList.add('hidden'));
+    document.getElementById('celebration-close').addEventListener('click', () => {
+      document.getElementById('celebration').classList.add('hidden');
+      this.closeModal('modal-checkin'); // 收款后顺手关掉今天的任务弹框
+    });
   },
 
   gotoToday() {

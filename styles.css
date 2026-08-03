@@ -40,6 +40,22 @@ body {
 
 .app { max-width: 880px; margin: 0 auto; padding: 20px 16px 60px; }
 
+/* === v9：整屏自适应 —— 不滚动、不留白 === */
+html, body { height: 100%; }
+.app {
+  min-height: 100vh;
+  min-height: 100dvh; /* 移动端动态视口高度，避开地址栏干扰 */
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding-bottom: 20px;
+}
+/* 日历区吃掉所有剩余高度（min-height:0 允许它在小屏收缩，避免溢出滚动） */
+.calendar-section { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.calendar-grid { flex: 1; min-height: 0; grid-auto-rows: 1fr; }
+/* 格子高度交给网格弹性分配（保留移动端媒体查询里的最小高度兜底） */
+.cell { min-height: 0; }
+
 /* Header */
 .header { margin-bottom: 20px; }
 .header-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -228,7 +244,7 @@ body {
 }
 .celebration.hidden { display: none; }
 
-.confetti-layer { position: absolute; inset: 0; pointer-events: none; }
+.confetti-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 .confetti {
   position: absolute; top: -6vh; display: block; border-radius: 2px;
   animation: confetti-fall linear forwards;
@@ -241,7 +257,7 @@ body {
 }
 
 .celebration-card {
-  position: relative; text-align: center; background: var(--surface);
+  position: relative; z-index: 1; text-align: center; background: var(--surface);
   padding: 36px 48px; border-radius: 22px; max-width: 88vw;
   box-shadow: 0 24px 80px rgba(0, 0, 0, .45), 0 0 0 1px var(--border);
   animation: celebrate-pop .55s cubic-bezier(.2, 1.6, .4, 1);
@@ -279,3 +295,54 @@ body {
   background: var(--surface); color: var(--muted); cursor: pointer;
 }
 .day-status .replay:hover { color: var(--text); background: var(--surface-2); }
+
+/* === v7：移动端紧凑布局 —— 一屏看完整看板（统计 + 日历） === */
+@media (max-width: 640px) {
+  .app { padding: 12px 10px 32px; }
+
+  /* 头部压缩 */
+  .header { margin-bottom: 10px; }
+  .header h1 { font-size: 18px; }
+  .subtitle { font-size: 11px; margin-top: 2px; }
+  .btn-ghost { padding: 6px 7px; font-size: 13px; }
+
+  /* 统计卡片：3 列紧凑布局，5 张卡只占 2 行 */
+  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .stat-card { padding: 8px 10px; border-radius: 10px; min-width: 0; overflow: hidden; }
+  .stat-label { font-size: 10px; white-space: nowrap; }
+  .stat-value { font-size: 15px; margin-top: 2px; white-space: nowrap; }
+  .stat-value .unit { font-size: 10px; }
+  .stat-card.phase .stat-value { font-size: 14px; }
+  .stat-sub {
+    font-size: 10px; margin-top: 2px; line-height: 1.35;
+    /* 完整文案：最多两行小字，不再省略号截断 */
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; word-break: break-all;
+  }
+  .progress { height: 5px; margin-top: 5px; }
+
+  /* 日历压缩 */
+  .calendar-section { padding: 10px; }
+  .calendar-toolbar { margin-bottom: 8px; }
+  .calendar-toolbar h2 { font-size: 15px; }
+  .calendar-weekdays { font-size: 11px; margin-bottom: 4px; }
+  .calendar-grid { gap: 4px; }
+  .cell { min-height: 42px; border-radius: 8px; font-size: 12px; padding: 2px; }
+  .cell .badge { font-size: 9px; }
+  .cell .mark { font-size: 10px; }
+  .legend { margin-top: 8px; gap: 8px; font-size: 11px; }
+  .footer-note { margin-top: 8px; }
+}
+
+/* 超小屏（如 320×568 的老机型）再压一档，保证一屏看全 */
+@media (max-width: 380px), (max-height: 600px) {
+  .header h1 { font-size: 16px; }
+  .stat-card { padding: 6px 8px; }
+  .stat-sub { font-size: 9px; -webkit-line-clamp: 3; } /* 窄卡最多三行小字，完整显示 */
+  .calendar-section { padding: 8px 8px 6px; }
+  .calendar-grid { gap: 3px; }
+  .cell { min-height: 28px; font-size: 11px; padding: 1px; line-height: 1.25; }
+  .cell .badge { font-size: 8px; margin-top: 0; }
+  .legend { font-size: 10px; gap: 6px; margin-top: 2px; }
+  .footer-note { display: none; }
+}
