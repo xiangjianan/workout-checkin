@@ -1,0 +1,237 @@
+// ui.js —— 纯渲染函数，返回 HTML 字符串（不直接读写状态）
+
+const FTUI = {
+  fmtMoney(n) {
+    return '¥' + n.toLocaleString('zh-CN');
+  },
+
+  renderStats(state) {
+    const s = FTLogic.computeStatus(state);
+    const phaseMap = {
+      ongoing: { text: '进行中', cls: 'ongoing' },
+      done: { text: '已完成 🎉', cls: 'done' },
+      failed: { text: '已断签', cls: 'failed' },
+    };
+    const ph = phaseMap[s.phase];
+    const pct = Math.round((s.completed / s.totalWorkouts) * 100);
+
+    const moneyCard = s.broken
+      ? statCard('已损失', this.fmtMoney(s.lost), 'failed', `第 ${s.firstMissed} 次未打卡，之后金额无法返还`)
+      : statCard('待返还', this.fmtMoney(s.recoverable), 'pending', '坚持打卡即可全部拿回');
+
+    return `
+      <div class="stat-card phase ${ph.cls}">
+        <div class="stat-label">当前状态</div>
+        <div class="stat-value">${ph.text}</div>
+        ${s.broken ? `<div class="stat-sub">第 ${s.firstMissed} 次训练未打卡</div>` : ''}
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">已完成训练</div>
+        <div class="stat-value">${s.completed}<span class="unit"> / ${s.totalWorkouts} 次</span></div>
+        <div class="progress"><i style="width:${pct}%"></i></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">距离目标</div>
+        <div class="stat-value">${s.remainingWorkouts}<span class="unit"> 次</span></div>
+        <div class="stat-sub">约 ${s.remainingDays} 天</div>
+      </div>
+      <div class="stat-card money">
+        <div class="stat-label">已返还</div>
+        <div class="stat-value">${this.fmtMoney(s.returned)}</div>
+        <div class="stat-sub">每次打卡返 ¥200 · 总额 ${this.fmtMoney(s.deposit)}</div>
+      </div>
+      ${moneyCard}
+    `;
+  },
+
+  renderCalendar(state, year, month /* 0-based */, selectedDate) {
+    const today = FTLogic.todayStr();
+    const first = new Date(year, month, 1);
+    const startWeekday = (first.getDay() + 6) % 7; // 周一为首列
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const lastPlan = FTLogic.lastWorkoutDate(state.startDate);
+
+    let html = '';
+    for (let i = 0; i < startWeekday; i++) html += `<div class="cell empty"></div>`;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = FTLogic.toDateStr(new Date(year, month, d));
+      const wi = FTLogic.workoutIndexForDate(state.startDate, dateStr);
+      const isToday = dateStr === today;
+      const isSelected = dateStr === selectedDate;
+
+      if (wi !== null) {
+        const rec = state.records[dateStr];
+        const targets = FTLogic.targetsForWorkout(state.startDate, wi);
+        const done = FTLogic.isWorkoutDone(rec, targets);
+        const isPast = FTLogic.diffDays(dateStr, today) < 0;
+        const status = done ? 'done' : isPast ? 'missed' : isToday ? 'pending' : 'future';
+        const mark = done ? '✓' : isPast ? '✗' : '';
+        html += `
+          <div class="cell workout ${status} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}"
+               data-date="${dateStr}" role="button" tabindex="0" aria-label="${dateStr} 第${wi}次训练">
+            <span class="day-num">${d}</span>
+            <span class="badge">#${wi}</span>
+            <span class="mark">${mark}</span>
+          </div>`;
+      } else {
+        const inPlan =
+          FTLogic.diffDays(dateStr, state.startDate) >= 0 && FTLogic.diffDays(dateStr, lastPlan) <= 0;
+        html += `
+          <div class="cell rest ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-date="${dateStr}">
+            <span class="day-num">${d}</span>
+            <span class="tag">${inPlan ? '休' : ''}</span>
+          </div>`;
+      }
+    }
+    return html;
+  },
+
+  renderCheckinTitle(state, dateStr) {
+    const wi = FTLogic.workoutIndexForDate(state.startDate, dateStr);
+    const d = FTLogic.parseDate(dateStr);
+    const cn = `${d.getMonth() + 1} 月 ${d.getDate()} 日`;
+    if (wi === null) return { title: cn, sub: '休息日 · 安心恢复' };
+    return { title: `${cn} · 第 ${wi} 次训练`, sub: '完成全部 5 个项目即打卡成功（+¥200）' };
+  },
+
+  renderCheckinBody(state, dateStr) {
+    const wi = FTLogic.workoutIndexForDate(state.startDate, dateStr);
+    if (wi === null) {
+      return `<p class="muted">这一天不是训练日，安心休息 💤</p>`;
+    }
+    const targets = FTLogic.targetsForWorkout(state.startDate, wi);
+    const rec = state.records[dateStr];
+    const dayDone = FTLogic.isWorkoutDone(rec, targets);
+    const batch = this.renderBatchSection(rec, targets);
+    const cards = FT_EXERCISES.map((ex) => this.renderExerciseCard(ex, targets[ex.id], rec)).join('');
+
+    return `
+      <div class="day-status ${dayDone ? 'is-done' : ''}">
+        ${dayDone
+          ? '✅ 本次训练已全部完成 <button class="replay" data-action="replay-celebrate">🎉 重播动画</button>'
+          : '完成全部 5 个项目即打卡成功（+¥200）'}
+      </div>
+      ${batch}
+      <div class="exercise-grid">${cards}</div>
+    `;
+  },
+
+  // 批量分组区：选择分组方案（一键应用于 5 项）+ 逐组完成（5 项同步）
+  renderBatchSection(record, targets) {
+    const sharedTarget = targets[FT_EXERCISES[0].id];
+    const allSame = FT_EXERCISES.every((ex) => targets[ex.id] === sharedTarget);
+    if (!allSame) return ''; // 各项目标不一致时不提供批量分组
+
+    const ref = record && record.exercises && record.exercises[FT_EXERCISES[0].id];
+    const curSets = (ref && ref.sets) || 0;
+    const total = FT_EXERCISES.length;
+
+    // 分组方案 chips：只列能整除的方案，点一下即应用
+    const chips = FTLogic.groupOptions(sharedTarget).map((o) => `
+      <button class="chip ${curSets === o.sets ? 'on' : ''}"
+              data-action="apply-groups-all" data-sets="${o.sets}" data-reps="${o.reps}">
+        ${o.sets}组 ×${o.reps}
+      </button>`).join('');
+
+    // 逐组完成按钮：点「第N组」一次性标记 5 个项目的第 N 组
+    // 顺序约束：前面的组没完成时，后面的组锁定不可点
+    let batchSets = '';
+    if (curSets > 0) {
+      // 各项目的“连续完成前缀”长度（如 [✓,✓,✗,✗] → 2）
+      const prefixes = FT_EXERCISES.map((ex) => {
+        const e = record && record.exercises && record.exercises[ex.id];
+        let p = 0;
+        while (e && e.setDone && e.setDone[p]) p++;
+        return p;
+      });
+      const minP = Math.min(...prefixes);
+      const maxP = Math.max(...prefixes);
+
+      const btns = Array.from({ length: curSets }, (_, k) => {
+        let done = 0;
+        for (const ex of FT_EXERCISES) {
+          const e = record && record.exercises && record.exercises[ex.id];
+          if (e && e.setDone && e.setDone[k]) done++;
+        }
+        const cls = done === total ? 'on' : done > 0 ? 'partial' : '';
+        const mark = done === total ? '✓' : `${done}/${total}`;
+        // 可勾选：它是“下一个该做的组”（所有项目前 k 组都完成）
+        // 可取消：它是“最后一个完成的组”（只能从后往前取消）
+        const canToggle = k === minP || (minP === maxP && k === minP - 1);
+        const locked = !canToggle;
+        return `<button class="set-btn batch ${cls} ${locked ? 'locked' : ''}" data-action="toggle-set-all" data-set="${k}" ${locked ? 'disabled' : ''}>
+          第${k + 1}组 <em>${mark}</em>${locked ? '<i class="lock">🔒</i>' : ''}</button>`;
+      }).join('');
+      batchSets = `
+        <div class="batch-sets">
+          <div class="batch-sets-label">逐组完成（按顺序来：前面的组没完成，后面的组会锁定 🔒）</div>
+          <div class="sets-row">${btns}</div>
+        </div>`;
+    }
+
+    return `
+      <div class="batch-section">
+        <div class="batch-row">
+          <span class="batch-title">分组方案 <small>每项目标 ${sharedTarget} 个 · 一键应用于全部 5 项</small></span>
+          <div class="chips">${chips}</div>
+          ${curSets > 0 ? '<button class="btn btn-mini" data-action="clear-groups-all">清除分组</button>' : ''}
+        </div>
+        ${batchSets}
+      </div>
+    `;
+  },
+
+  renderExerciseCard(ex, target, record) {
+    const completed = FTLogic.exerciseCompleted(record, ex.id);
+    const exRec = record && record.exercises && record.exercises[ex.id];
+    const sets = (exRec && exRec.sets) || 0;
+    const setDone = (exRec && exRec.setDone) || [];
+    const pct = Math.min(100, Math.round((completed / target) * 100));
+    const isDone = completed >= target;
+
+    // 分组后直接展示组按钮（不再折叠）
+    // 顺序约束：只能勾选“下一组”或取消“最后一组”，其余锁定
+    let setsHtml = '';
+    if (sets > 0) {
+      let prefix = 0;
+      while (setDone[prefix]) prefix++;
+      const btns = Array.from({ length: sets }, (_, k) => {
+        const locked = !(k === prefix || k === prefix - 1);
+        return `
+        <button class="set-btn mini ${setDone[k] ? 'on' : ''} ${locked ? 'locked' : ''}" data-action="toggle-set" data-set="${k}" ${locked ? 'disabled' : ''}>
+          ${k + 1}${setDone[k] ? '✓' : locked ? ' 🔒' : ''}
+        </button>`;
+      }).join('');
+      setsHtml = `<div class="sets-row tight">${btns}</div>`;
+    }
+
+    return `
+      <div class="exercise-card ${isDone ? 'done' : ''}" data-ex-id="${ex.id}">
+        <div class="ex-head"><span class="ex-name">${ex.emoji} ${ex.name}</span></div>
+        <div class="ex-meta">
+          <span class="ex-target">目标 ${target}</span>
+          <span class="ex-count ${isDone ? 'done' : ''}">${completed}/${target}</span>
+        </div>
+        <div class="progress"><i style="width:${pct}%"></i></div>
+        ${setsHtml}
+        <div class="ex-controls">
+          <button class="btn btn-mini" data-action="inc" data-delta="-1">−</button>
+          <button class="btn btn-mini" data-action="inc" data-delta="1">+</button>
+          <button class="btn btn-mini primary" data-action="complete">完成</button>
+          <button class="btn btn-mini" data-action="reset">归零</button>
+        </div>
+      </div>
+    `;
+  },
+};
+
+// 通用统计卡片（模块内辅助函数）
+function statCard(label, value, cls = '', sub = '') {
+  return `
+    <div class="stat-card ${cls}">
+      <div class="stat-label">${label}</div>
+      <div class="stat-value">${value}</div>
+      ${sub ? `<div class="stat-sub">${sub}</div>` : ''}
+    </div>`;
+}
