@@ -44,6 +44,40 @@ const FTUI = {
     `;
   },
 
+  // 庆祝弹窗里的整体进度概览：进度条 + 百分比 + 距离目标 + 剩余待返还金额
+  renderCelebrationStats(state) {
+    const s = FTLogic.computeStatus(state);
+    const pct = Math.round((s.completed / s.totalWorkouts) * 100);
+    const moneySub = s.broken
+      ? `已断签，已损失 ${this.fmtMoney(s.lost)}`
+      : `已返还 ${this.fmtMoney(s.returned)}`;
+
+    return `
+      <div class="celebrate-stats">
+        <div class="cs-progress">
+          <div class="cs-progress-head">
+            <span class="cs-label">整体进度</span>
+            <span class="cs-pct">${pct}%</span>
+          </div>
+          <div class="progress"><i style="width:${pct}%"></i></div>
+          <div class="cs-progress-sub">已完成 ${s.completed} / ${s.totalWorkouts} 次</div>
+        </div>
+        <div class="cs-grid">
+          <div class="cs-item">
+            <div class="cs-label">距离目标</div>
+            <div class="cs-value">${s.remainingWorkouts}<span class="cs-unit"> 次</span></div>
+            <div class="cs-sub">约 ${s.remainingDays} 天</div>
+          </div>
+          <div class="cs-item money">
+            <div class="cs-label">剩余待返还</div>
+            <div class="cs-value">${this.fmtMoney(s.recoverable)}</div>
+            <div class="cs-sub">${moneySub}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
   renderCalendar(state, year, month /* 0-based */, selectedDate) {
     const today = FTLogic.todayStr();
     const first = new Date(year, month, 1);

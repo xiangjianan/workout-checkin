@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="健身打卡">
 
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
   <div class="app">
@@ -110,14 +110,15 @@
       <h2>今日训练打卡成功！</h2>
       <div class="celebrate-money">+ ¥200</div>
       <p class="celebrate-note">赶紧找对方把 <strong>200 块钱</strong> 要回来！💸</p>
+      <div id="celebrate-stats"></div>
       <button id="celebration-close" class="btn btn-primary">已收款，继续加油 💪</button>
     </div>
   </div>
 
-  <script src="js/logic.js?v=10"></script>
-  <script src="js/store.js?v=10"></script>
-  <script src="js/ui.js?v=10"></script>
-  <script src="js/app.js?v=10"></script>
+  <script src="js/logic.js?v=11"></script>
+  <script src="js/store.js?v=11"></script>
+  <script src="js/ui.js?v=11"></script>
+  <script src="js/app.js?v=11"></script>
   <script>
     // PWA：http/https 下注册 Service Worker（离线可用）；file:// 打开时自动跳过
     if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {

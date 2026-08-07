@@ -12,3 +12,6 @@ npm-debug.log*
 # Editor
 .vscode/
 .idea/
+
+# Cloudflare Wrangler 本地状态/缓存
+.wrangler/

@@ -5,6 +5,7 @@
   "description": "健身打卡 · 100 天对赌计划（纯本地静态页 + 局域网部署）",
   "scripts": {
     "dev": "node scripts/dev-server.js",
-    "lan": "node scripts/dev-server.js --port 8000 --host 0.0.0.0"
+    "lan": "node scripts/dev-server.js --port 8000 --host 0.0.0.0",
+    "test": "node --test"
   }
 }

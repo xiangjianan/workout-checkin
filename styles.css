@@ -288,6 +288,32 @@ html, body { height: 100%; }
 .celebrate-note { color: var(--muted); font-size: 14px; margin: 6px 0 18px; }
 .celebrate-note strong { color: var(--text); }
 
+/* 庆祝弹窗：整体进度概览（进度条 + 距离目标 + 剩余待返还） */
+.celebrate-stats {
+  margin: 0 0 20px;
+  text-align: left;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.cs-progress-head { display: flex; align-items: baseline; justify-content: space-between; }
+.cs-label { font-size: 12px; color: var(--muted); }
+.cs-pct { font-size: 16px; font-weight: 700; color: var(--primary); }
+.celebrate-stats .progress { margin-top: 8px; height: 8px; }
+.cs-progress-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.cs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.cs-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; text-align: center; }
+.cs-value { font-size: 20px; font-weight: 800; margin-top: 4px; }
+.cs-value .cs-unit { font-size: 12px; font-weight: 500; color: var(--muted); }
+.cs-item.money .cs-value { color: var(--primary-d); }
+.cs-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+@media (max-width: 480px) {
+  .celebration-card { padding: 28px 22px; }
+  .celebrate-stats { padding: 12px; }
+  .cs-value { font-size: 17px; }
+}
+
 /* 已完成日子里的“重播动画”小按钮 */
 .day-status .replay {
   margin-left: 8px; font: inherit; font-size: 12px; padding: 2px 10px;

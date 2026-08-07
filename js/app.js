@@ -56,6 +56,8 @@ const FTApp = {
     const overlay = document.getElementById('celebration');
     overlay.querySelector('h2').textContent =
       !dateStr || dateStr === FTLogic.todayStr() ? '今日训练打卡成功！' : '补打卡成功！';
+    overlay.querySelector('#celebrate-stats').innerHTML =
+      FTUI.renderCelebrationStats(this.state);
     overlay.classList.remove('hidden');
     // 重新触发卡片弹出动画
     const card = overlay.querySelector('.celebration-card');
