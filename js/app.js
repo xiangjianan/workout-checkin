@@ -323,6 +323,33 @@ const FTApp = {
       this.closeModal('modal-settings');
       this.showCelebration(FTLogic.todayStr());
     });
+    document.getElementById('btn-check-update').addEventListener('click', () => this.checkUpdate());
+  },
+
+  // 检查更新：注销 Service Worker + 清空网页缓存 + 刷新，强制从服务器拉取最新前端代码。
+  // localStorage 里的打卡数据不受影响。
+  async checkUpdate() {
+    const btn = document.getElementById('btn-check-update');
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '正在更新…';
+    try {
+      // 注销 Service Worker，下次加载会重新注册最新 sw.js
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+      // 清空所有网页缓存，强制重新从服务器下载
+      if (window.caches) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      window.location.reload();
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = orig;
+      alert('更新失败，请手动刷新页面重试：' + (e && e.message ? e.message : e));
+    }
   },
 };
 

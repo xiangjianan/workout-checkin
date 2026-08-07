@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="健身打卡">
 
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
   <div class="app">
@@ -95,6 +95,10 @@
           <button id="btn-test-celebration" class="btn">🎉 测试打卡庆祝动画</button>
           <span class="muted small">点一下立即播放动画，用于确认动画在你的浏览器里能正常显示。</span>
         </div>
+        <div class="field">
+          <button id="btn-check-update" class="btn">🔄 检查更新</button>
+          <span class="muted small">从服务器拉取最新前端代码并刷新页面（仅清除浏览器缓存的网页文件，打卡数据不受影响）。</span>
+        </div>
         <div class="danger-zone">
           <button id="btn-reset-all" class="btn btn-danger">清空所有数据</button>
         </div>
@@ -115,10 +119,10 @@
     </div>
   </div>
 
-  <script src="js/logic.js?v=11"></script>
-  <script src="js/store.js?v=11"></script>
-  <script src="js/ui.js?v=11"></script>
-  <script src="js/app.js?v=11"></script>
+  <script src="js/logic.js?v=12"></script>
+  <script src="js/store.js?v=12"></script>
+  <script src="js/ui.js?v=12"></script>
+  <script src="js/app.js?v=12"></script>
   <script>
     // PWA：http/https 下注册 Service Worker（离线可用）；file:// 打开时自动跳过
     if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {

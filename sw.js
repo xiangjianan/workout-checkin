@@ -1,5 +1,5 @@
 // sw.js —— Service Worker：离线缓存静态资源（仅 http/https 下生效，file:// 自动跳过）
-const CACHE = 'workout-v11';
+const CACHE = 'workout-v12';
 
 const ASSETS = [
   '.',
