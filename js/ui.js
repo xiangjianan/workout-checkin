@@ -137,10 +137,20 @@ const FTUI = {
     const targets = FTLogic.targetsForWorkout(state.startDate, wi);
     const rec = state.records[dateStr];
     const dayDone = FTLogic.isWorkoutDone(rec, targets);
+    // 当天目标：5 个项目标一致，取首项作每项目标，汇总全天总数
+    const perEx = targets[FT_EXERCISES[0].id];
+    const total = FT_EXERCISES.reduce((sum, ex) => sum + (targets[ex.id] || 0), 0);
     const batch = this.renderBatchSection(rec, targets);
     const cards = FT_EXERCISES.map((ex) => this.renderExerciseCard(ex, targets[ex.id], rec)).join('');
 
     return `
+      <div class="day-target">
+        <div class="day-target-label">🎯 今日目标</div>
+        <div class="day-target-main">
+          <span class="day-target-per"><b>${perEx}</b><i>个 / 项</i></span>
+          <span class="day-target-total">共 5 项 · 合计 <b>${total}</b> 个</span>
+        </div>
+      </div>
       <div class="day-status ${dayDone ? 'is-done' : ''}">
         ${dayDone
           ? '✅ 本次训练已全部完成 <button class="replay" data-action="replay-celebrate">🎉 重播动画</button>'
@@ -250,8 +260,6 @@ const FTUI = {
         <div class="progress"><i style="width:${pct}%"></i></div>
         ${setsHtml}
         <div class="ex-controls">
-          <button class="btn btn-mini" data-action="inc" data-delta="-1">−</button>
-          <button class="btn btn-mini" data-action="inc" data-delta="1">+</button>
           <button class="btn btn-mini primary" data-action="complete">完成</button>
           <button class="btn btn-mini" data-action="reset">归零</button>
         </div>

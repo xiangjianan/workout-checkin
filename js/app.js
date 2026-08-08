@@ -288,9 +288,6 @@ const FTApp = {
     const wi = FTLogic.workoutIndexForDate(this.state.startDate, dateStr);
 
     switch (action) {
-      case 'inc':
-        this.commit(FTStore.addRep(this.state, dateStr, exId, Number(btn.dataset.delta)));
-        break;
       case 'complete': {
         const ex = FT_EXERCISES.find((x) => x.id === exId);
         this.commit(FTStore.completeExercise(this.state, dateStr, exId, FTLogic.targetForWorkout(ex, wi)));

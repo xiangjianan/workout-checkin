@@ -167,6 +167,22 @@ html, body { height: 100%; }
 /* Checkin */
 .day-status { text-align: center; font-size: 13px; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px; margin-bottom: 14px; }
 .day-status.is-done { color: var(--done); background: #ecfdf5; border-color: #a7f3d0; font-weight: 600; }
+
+/* 今日目标横幅：突出当天要做多少个 */
+.day-target {
+  background: linear-gradient(135deg, rgba(16, 185, 129, .14), rgba(16, 185, 129, .04));
+  border: 1px solid rgba(16, 185, 129, .35);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+.day-target-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.day-target-main { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; margin-top: 4px; }
+.day-target-per { display: inline-flex; align-items: baseline; gap: 4px; }
+.day-target-per b { font-size: 34px; font-weight: 800; color: var(--primary-d); line-height: 1; }
+.day-target-per i { font-style: normal; font-size: 13px; color: var(--muted); }
+.day-target-total { font-size: 13px; color: var(--muted); }
+.day-target-total b { font-size: 17px; font-weight: 800; color: var(--text); }
 .exercise-list { display: flex; flex-direction: column; gap: 12px; }
 .exercise-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--surface); }
 .exercise-card.done { background: #ecfdf5; border-color: #a7f3d0; }

@@ -68,13 +68,6 @@ const FTStore = {
     return { ...state, records: { ...state.records, [dateStr]: nextRec } };
   },
 
-  addRep(state, dateStr, exId, delta) {
-    return this.updateExercise(state, dateStr, exId, (ex) => ({
-      ...ex,
-      completed: Math.max(0, ex.completed + delta),
-    }));
-  },
-
   // 标为完成：只升不降（已超目标则保持）
   completeExercise(state, dateStr, exId, target) {
     return this.updateExercise(state, dateStr, exId, (ex) => ({
