@@ -14,33 +14,33 @@ const FTUI = {
     };
     const ph = phaseMap[s.phase];
     const pct = Math.round((s.completed / s.totalWorkouts) * 100);
-
-    const moneyCard = s.broken
-      ? statCard('已损失', this.fmtMoney(s.lost), 'failed', `第 ${s.firstMissed} 次未打卡，之后金额无法返还`)
-      : statCard('待返还', this.fmtMoney(s.recoverable), 'pending', '坚持打卡即可全部拿回');
+    const subLine = s.broken
+      ? `第 ${s.firstMissed} 次训练未打卡，之后金额无法返还`
+      : `距离目标 ${s.remainingWorkouts} 次 · 约 ${s.remainingDays} 天`;
+    const rightMoney = s.broken
+      ? { label: '已损失', value: this.fmtMoney(s.lost), cls: 'lost' }
+      : { label: '待返还', value: this.fmtMoney(s.recoverable), cls: 'pending' };
 
     return `
-      <div class="stat-card phase ${ph.cls}">
-        <div class="stat-label">当前状态</div>
-        <div class="stat-value">${ph.text}</div>
-        ${s.broken ? `<div class="stat-sub">第 ${s.firstMissed} 次训练未打卡</div>` : ''}
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">已完成训练</div>
-        <div class="stat-value">${s.completed}<span class="unit"> / ${s.totalWorkouts} 次</span></div>
+      <div class="stat-hero ${ph.cls}">
+        <div class="hero-top">
+          <span class="hero-phase">${ph.text}</span>
+          <span class="hero-pct">${pct}%</span>
+        </div>
+        <div class="hero-count"><b>${s.completed}</b><i>/ ${s.totalWorkouts} 次</i></div>
         <div class="progress"><i style="width:${pct}%"></i></div>
+        <div class="hero-sub">${subLine}</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">距离目标</div>
-        <div class="stat-value">${s.remainingWorkouts}<span class="unit"> 次</span></div>
-        <div class="stat-sub">约 ${s.remainingDays} 天</div>
+      <div class="stat-money">
+        <div class="money-item">
+          <span class="money-label">已返还</span>
+          <span class="money-value returned">${this.fmtMoney(s.returned)}</span>
+        </div>
+        <div class="money-item">
+          <span class="money-label">${rightMoney.label}</span>
+          <span class="money-value ${rightMoney.cls}">${rightMoney.value}</span>
+        </div>
       </div>
-      <div class="stat-card money">
-        <div class="stat-label">已返还</div>
-        <div class="stat-value">${this.fmtMoney(s.returned)}</div>
-        <div class="stat-sub">每次打卡返 ¥200 · 总额 ${this.fmtMoney(s.deposit)}</div>
-      </div>
-      ${moneyCard}
     `;
   },
 
@@ -129,10 +129,10 @@ const FTUI = {
     return { title: `${cn} · 第 ${wi} 次训练`, sub: '完成全部 5 个项目即打卡成功（+¥200）' };
   },
 
-  renderCheckinBody(state, dateStr) {
+  renderCheckinBody(state, dateStr, advancedOpen) {
     const wi = FTLogic.workoutIndexForDate(state.startDate, dateStr);
     if (wi === null) {
-      return `<p class="muted">这一天不是训练日，安心休息 💤</p>`;
+      return `<p class="muted rest-note">这一天不是训练日，安心休息 💤</p>`;
     }
     const targets = FTLogic.targetsForWorkout(state.startDate, wi);
     const rec = state.records[dateStr];
@@ -140,8 +140,13 @@ const FTUI = {
     // 当天目标：5 个项目标一致，取首项作每项目标，汇总全天总数
     const perEx = targets[FT_EXERCISES[0].id];
     const total = FT_EXERCISES.reduce((sum, ex) => sum + (targets[ex.id] || 0), 0);
+    const rows = FT_EXERCISES.map((ex) => this.renderExerciseCard(ex, targets[ex.id], rec)).join('');
     const batch = this.renderBatchSection(rec, targets);
-    const cards = FT_EXERCISES.map((ex) => this.renderExerciseCard(ex, targets[ex.id], rec)).join('');
+
+    // 主操作置顶：一键完成当天全部（已完成时降级为不可点的状态提示）
+    const quickBtn = dayDone
+      ? `<button class="btn btn-quick-complete done" disabled>✓ 当天已全部完成</button>`
+      : `<button class="btn btn-primary btn-quick-complete" data-action="quick-complete-day">✓ 一键完成当天全部</button>`;
 
     return `
       <div class="day-target">
@@ -151,13 +156,17 @@ const FTUI = {
           <span class="day-target-total">共 5 项 · 合计 <b>${total}</b> 个</span>
         </div>
       </div>
+      ${quickBtn}
       <div class="day-status ${dayDone ? 'is-done' : ''}">
         ${dayDone
           ? '✅ 本次训练已全部完成 <button class="replay" data-action="replay-celebrate">🎉 重播动画</button>'
           : '完成全部 5 个项目即打卡成功（+¥200）'}
       </div>
-      ${batch}
-      <div class="exercise-grid">${cards}</div>
+      <div class="exercise-list">${rows}</div>
+      <details class="advanced"${advancedOpen ? ' open' : ''}>
+        <summary>分组完成（高级）<small>把目标拆成多组，5 项同步逐组完成</small></summary>
+        ${batch}
+      </details>
     `;
   },
 
@@ -227,53 +236,44 @@ const FTUI = {
   },
 
   renderExerciseCard(ex, target, record) {
-    const completed = FTLogic.exerciseCompleted(record, ex.id);
     const exRec = record && record.exercises && record.exercises[ex.id];
+    const completed = FTLogic.exerciseCompleted(record, ex.id);
     const sets = (exRec && exRec.sets) || 0;
     const setDone = (exRec && exRec.setDone) || [];
     const pct = Math.min(100, Math.round((completed / target) * 100));
     const isDone = completed >= target;
 
-    // 分组后直接展示组按钮（不再折叠）
-    // 顺序约束：只能勾选“下一组”或取消“最后一组”，其余锁定
+    // 右侧主操作：未完成 →「完成」；已完成 →「归零」
+    const actionBtn = isDone
+      ? `<button class="btn btn-mini ghost ex-reset" data-action="reset">归零</button>`
+      : `<button class="btn btn-mini primary" data-action="complete">完成</button>`;
+
+    // 分组后：本项目「一组一组」打卡按钮（顺序锁定：只能勾选下一组 / 取消最后一组）
     let setsHtml = '';
     if (sets > 0) {
       let prefix = 0;
       while (setDone[prefix]) prefix++;
       const btns = Array.from({ length: sets }, (_, k) => {
         const locked = !(k === prefix || k === prefix - 1);
-        return `
-        <button class="set-btn mini ${setDone[k] ? 'on' : ''} ${locked ? 'locked' : ''}" data-action="toggle-set" data-set="${k}" ${locked ? 'disabled' : ''}>
-          ${k + 1}${setDone[k] ? '✓' : locked ? ' 🔒' : ''}
-        </button>`;
+        return `<button class="set-btn mini ${setDone[k] ? 'on' : ''} ${locked ? 'locked' : ''}"
+            data-action="toggle-set" data-set="${k}"${locked ? ' disabled' : ''}
+            title="第${k + 1}组" aria-label="第${k + 1}组">
+            ${k + 1}${setDone[k] ? ' ✓' : locked ? ' 🔒' : ''}</button>`;
       }).join('');
       setsHtml = `<div class="sets-row tight">${btns}</div>`;
     }
 
     return `
-      <div class="exercise-card ${isDone ? 'done' : ''}" data-ex-id="${ex.id}">
-        <div class="ex-head"><span class="ex-name">${ex.emoji} ${ex.name}</span></div>
-        <div class="ex-meta">
-          <span class="ex-target">目标 ${target}</span>
-          <span class="ex-count ${isDone ? 'done' : ''}">${completed}/${target}</span>
+      <div class="exercise-row ${isDone ? 'done' : ''}" data-ex-id="${ex.id}">
+        <div class="ex-line">
+          <span class="ex-emoji">${ex.emoji}</span>
+          <span class="ex-name">${ex.name}</span>
+          <span class="ex-count ${isDone ? 'done' : ''}">${completed}<i>/${target}</i></span>
+          <span class="ex-act">${actionBtn}</span>
         </div>
-        <div class="progress"><i style="width:${pct}%"></i></div>
+        <div class="progress slim"><i style="width:${pct}%"></i></div>
         ${setsHtml}
-        <div class="ex-controls">
-          <button class="btn btn-mini primary" data-action="complete">完成</button>
-          <button class="btn btn-mini" data-action="reset">归零</button>
-        </div>
       </div>
     `;
   },
 };
-
-// 通用统计卡片（模块内辅助函数）
-function statCard(label, value, cls = '', sub = '') {
-  return `
-    <div class="stat-card ${cls}">
-      <div class="stat-label">${label}</div>
-      <div class="stat-value">${value}</div>
-      ${sub ? `<div class="stat-sub">${sub}</div>` : ''}
-    </div>`;
-}

@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="健身打卡">
 
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
   <div class="app">
@@ -23,11 +23,8 @@
       <div class="header-row">
         <h1>🏋️ 健身打卡</h1>
         <div class="header-actions">
-          <button id="btn-today" class="btn btn-ghost">今天</button>
-          <button id="btn-settings" class="btn btn-ghost">设置</button>
-          <button id="btn-export" class="btn btn-ghost">导出</button>
-          <button id="btn-import" class="btn btn-ghost">导入</button>
-          <input type="file" id="import-file" accept="application/json" hidden>
+          <button id="btn-today" class="btn btn-today">今天</button>
+          <button id="btn-settings" class="btn btn-icon" aria-label="设置">⚙</button>
         </div>
       </div>
       <p class="subtitle">100 天 · 50 次训练 · 5 个项目 · 10,000 元对赌</p>
@@ -54,9 +51,6 @@
       </div>
     </section>
 
-    <p class="footer-note muted small">
-      数据保存在本机浏览器（localStorage），换浏览器/清缓存会丢失，记得用「导出」备份。
-    </p>
   </div>
 
   <!-- 打卡弹窗 -->
@@ -71,9 +65,6 @@
         <button class="btn btn-ghost close-modal" data-modal="modal-checkin" aria-label="关闭">✕</button>
       </div>
       <div id="checkin-body" class="modal-body"></div>
-      <div class="modal-foot">
-        <button id="quick-complete-day" class="btn btn-primary">一键完成当天全部</button>
-      </div>
     </div>
   </div>
 
@@ -91,6 +82,15 @@
           <input type="date" id="setting-start-date">
         </label>
         <p class="muted small">修改开始日期会重新计算训练计划与目标，已记录的打卡按日期保留。</p>
+        <div class="settings-group">
+          <h4 class="settings-group-title">数据管理</h4>
+          <div class="data-actions">
+            <button id="btn-export" class="btn">导出备份</button>
+            <button id="btn-import" class="btn">导入备份</button>
+            <input type="file" id="import-file" accept="application/json" hidden>
+          </div>
+          <p class="muted small">数据保存在本机浏览器（localStorage），换浏览器/清缓存会丢失，记得用「导出备份」定期保存。</p>
+        </div>
         <div class="field">
           <button id="btn-test-celebration" class="btn">🎉 测试打卡庆祝动画</button>
           <span class="muted small">点一下立即播放动画，用于确认动画在你的浏览器里能正常显示。</span>
@@ -119,10 +119,10 @@
     </div>
   </div>
 
-  <script src="js/logic.js?v=13"></script>
-  <script src="js/store.js?v=13"></script>
-  <script src="js/ui.js?v=13"></script>
-  <script src="js/app.js?v=13"></script>
+  <script src="js/logic.js?v=14"></script>
+  <script src="js/store.js?v=14"></script>
+  <script src="js/ui.js?v=14"></script>
+  <script src="js/app.js?v=14"></script>
   <script>
     // PWA：http/https 下注册 Service Worker（离线可用）；file:// 打开时自动跳过
     if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {

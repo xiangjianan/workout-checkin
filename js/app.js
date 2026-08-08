@@ -4,6 +4,7 @@ const FTApp = {
   state: null,
   view: { year: 0, month: 0 }, // 日历当前视图（month 为 0-based）
   selectedDate: null,
+  checkinAdvancedOpen: false, // 训练弹窗「分组完成（高级）」折叠态，跨重渲染保留
 
   init() {
     this.state = FTStore.load();
@@ -15,8 +16,27 @@ const FTApp = {
     this.bindCalendar();
     this.bindCheckin();
     this.bindSettings();
+    this.bindAudioUnlock();
 
     this.rerender();
+  },
+
+  // 移动端自动播放策略：AudioContext 必须在用户手势中创建/恢复才能发声。
+  // 这里在「首次任意手势」(点今天 / 点日历 / 点项目……) 时就解锁音频上下文，
+  // 这样后续触发庆祝时上下文已是 running，金币声一定能播出来。
+  bindAudioUnlock() {
+    if (this._audioUnlocked) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const unlock = () => {
+      if (!this._audioCtx) this._audioCtx = new AC();
+      if (this._audioCtx.state === 'suspended') this._audioCtx.resume();
+      this._audioUnlocked = true;
+    };
+    const opts = { once: true, passive: true };
+    document.addEventListener('pointerdown', unlock, opts);
+    document.addEventListener('touchstart', unlock, opts);
+    document.addEventListener('keydown', unlock, opts);
   },
 
   // 全量刷新（统计 + 日历 + 打卡弹窗）
@@ -37,6 +57,8 @@ const FTApp = {
     this.state = nextState;
     FTStore.save(this.state);
     this.rerender();
+    // 轻触感反馈（PWA；iOS 无 Vibration API 时自动跳过）
+    if (navigator.vibrate) navigator.vibrate(10);
     this.maybeCelebrate(prevState, this.state);
   },
 
@@ -59,6 +81,8 @@ const FTApp = {
     overlay.querySelector('#celebrate-stats').innerHTML =
       FTUI.renderCelebrationStats(this.state);
     overlay.classList.remove('hidden');
+    // 庆祝触感（双脉冲；iOS 自动 no-op）
+    if (navigator.vibrate) navigator.vibrate([10, 40, 20]);
     // 重新触发卡片弹出动画
     const card = overlay.querySelector('.celebration-card');
     card.style.animation = 'none';
@@ -69,13 +93,14 @@ const FTApp = {
   },
 
   // 金币到账音效：Web Audio 合成（双音“叮—叮” + 上行琶音），无需音频文件
-  playCoinSound() {
+  async playCoinSound() {
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       if (!this._audioCtx) this._audioCtx = new AC();
       const ctx = this._audioCtx;
-      if (ctx.state === 'suspended') ctx.resume();
+      // 等待上下文真正恢复为 running 再排音，避免移动端在 suspended 态下静默丢音
+      if (ctx.state !== 'running') await ctx.resume();
       const now = ctx.currentTime + 0.05;
 
       const tone = (freq, t, dur, type, vol) => {
@@ -105,6 +130,8 @@ const FTApp = {
   spawnConfetti() {
     const layer = document.getElementById('confetti-layer');
     layer.innerHTML = '';
+    // 尊重「减少动态效果」：不撒彩纸，仅保留静态庆祝卡
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const colors = ['#f43f5e', '#f59e0b', '#10b981', '#3b82f6', '#a855f7', '#facc15'];
     const emojis = ['💸', '💰', '🎉', '💪'];
     const frag = document.createDocumentFragment();
@@ -241,20 +268,18 @@ const FTApp = {
     const { title, sub } = FTUI.renderCheckinTitle(this.state, dateStr);
     document.getElementById('checkin-title').textContent = title;
     document.getElementById('checkin-sub').textContent = sub;
-    document.getElementById('checkin-body').innerHTML = FTUI.renderCheckinBody(this.state, dateStr);
+    document.getElementById('checkin-body').innerHTML =
+      FTUI.renderCheckinBody(this.state, dateStr, this.checkinAdvancedOpen);
   },
   bindCheckin() {
     // 事件委托：容器稳定，内部每次刷新重建
-    document.getElementById('checkin-body').addEventListener('click', (e) =>
-      this.handleCheckinAction(e));
-
-    document.getElementById('quick-complete-day').addEventListener('click', () => {
-      const dateStr = this.selectedDate;
-      const wi = FTLogic.workoutIndexForDate(this.state.startDate, dateStr);
-      if (wi === null) return;
-      const targets = FTLogic.targetsForWorkout(this.state.startDate, wi);
-      this.commit(FTStore.quickCompleteDay(this.state, dateStr, targets));
-    });
+    const body = document.getElementById('checkin-body');
+    body.addEventListener('click', (e) => this.handleCheckinAction(e));
+    // 捕获「高级」折叠态：每次 commit 会整体重渲染 body，靠这里记下开关避免回弹
+    body.addEventListener('toggle', (e) => {
+      const d = e.target.closest('details.advanced');
+      if (d) this.checkinAdvancedOpen = d.hasAttribute('open');
+    }, true);
   },
   handleCheckinAction(e) {
     const btn = e.target.closest('[data-action]');
@@ -266,6 +291,13 @@ const FTApp = {
     // —— 批量操作（作用于全部 5 个项目，无需 exId）——
     if (action === 'replay-celebrate') {
       this.showCelebration(dateStr);
+      return;
+    }
+    if (action === 'quick-complete-day') {
+      const wi = FTLogic.workoutIndexForDate(this.state.startDate, dateStr);
+      if (wi === null) return;
+      const targets = FTLogic.targetsForWorkout(this.state.startDate, wi);
+      this.commit(FTStore.quickCompleteDay(this.state, dateStr, targets));
       return;
     }
     if (action === 'apply-groups-all') {
