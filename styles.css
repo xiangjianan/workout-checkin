@@ -227,7 +227,7 @@ html, body { height: 100%; }
 .rest-note { text-align: center; padding: 28px 12px; }
 
 /* 「分组完成（高级）」折叠区 */
-.advanced { margin-top: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.advanced { margin: 0 0 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
 .advanced > summary {
   cursor: pointer; list-style: none; padding: 12px 14px;
   font-size: 13px; font-weight: 600; color: var(--muted);

@@ -143,7 +143,7 @@ const FTUI = {
     const rows = FT_EXERCISES.map((ex) => this.renderExerciseCard(ex, targets[ex.id], rec)).join('');
     const batch = this.renderBatchSection(rec, targets);
 
-    // 主操作置顶：一键完成当天全部（已完成时降级为不可点的状态提示）
+    // 一键完成当天全部，置于分组区之下（已完成时降级为不可点的状态提示）
     const quickBtn = dayDone
       ? `<button class="btn btn-quick-complete done" disabled>✓ 当天已全部完成</button>`
       : `<button class="btn btn-primary btn-quick-complete" data-action="quick-complete-day">✓ 一键完成当天全部</button>`;
@@ -156,6 +156,10 @@ const FTUI = {
           <span class="day-target-total">共 5 项 · 合计 <b>${total}</b> 个</span>
         </div>
       </div>
+      <details class="advanced"${advancedOpen ? ' open' : ''}>
+        <summary>分组完成（高级）<small>把目标拆成多组，5 项同步逐组完成</small></summary>
+        ${batch}
+      </details>
       ${quickBtn}
       <div class="day-status ${dayDone ? 'is-done' : ''}">
         ${dayDone
@@ -163,10 +167,6 @@ const FTUI = {
           : '完成全部 5 个项目即打卡成功（+¥200）'}
       </div>
       <div class="exercise-list">${rows}</div>
-      <details class="advanced"${advancedOpen ? ' open' : ''}>
-        <summary>分组完成（高级）<small>把目标拆成多组，5 项同步逐组完成</small></summary>
-        ${batch}
-      </details>
     `;
   },
 
