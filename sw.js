@@ -1,14 +1,19 @@
 // sw.js —— Service Worker：离线缓存静态资源（仅 http/https 下生效，file:// 自动跳过）
-const CACHE = 'workout-v15';
+const CACHE = 'workout-v16';
 
 const ASSETS = [
   '.',
   'index.html',
+  'daily.html',
   'styles.css',
   'js/logic.js',
   'js/store.js',
   'js/ui.js',
   'js/app.js',
+  'js/daily-logic.js',
+  'js/daily-store.js',
+  'js/daily-ui.js',
+  'js/daily-app.js',
   'manifest.webmanifest',
   'icons/icon-192.png',
   'icons/icon-512.png',

@@ -423,3 +423,50 @@ html, body { height: 100%; }
   .modal-card, .celebration-card, .celebrate-emoji, .celebrate-money, .confetti { animation: none !important; }
   .btn, .cell, .set-btn, .chip, .exercise-row, .advanced > summary { transition: none !important; }
 }
+
+/* === 每日打卡页（daily.html）：二选一打卡按钮 + 类型统计 === */
+
+/* 打卡弹窗：健身 / 学习 两个大按钮 */
+.choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 4px 0 10px; }
+.choice-btn {
+  font: inherit; cursor: pointer; touch-action: manipulation;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  padding: 18px 10px; min-height: 108px;
+  border: 1.5px solid var(--border); border-radius: 14px;
+  background: var(--surface); color: var(--text);
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.choice-btn:hover { background: var(--surface-2); }
+.choice-btn:active { transform: scale(.97); }
+.choice-btn .ce { font-size: 36px; line-height: 1; }
+.choice-btn .cn { font-size: 16px; font-weight: 700; }
+.choice-btn .chint { font-size: 11px; color: var(--muted); }
+.choice-note { text-align: center; margin: 2px 0 4px; }
+
+/* 已打卡后的次级操作（切换类型 / 取消打卡）小一号 */
+.choice-grid.done { margin-top: 4px; }
+.choice-grid.done .choice-btn { min-height: 84px; padding: 12px 10px; }
+.choice-grid.done .choice-btn .ce { font-size: 26px; }
+.choice-grid.done .choice-btn .cn { font-size: 14px; }
+.choice-btn.switch { border-style: dashed; }
+.choice-btn.cancel { color: var(--muted); }
+
+/* 类型统计条：💪 健身 N 天 / 📚 学习 M 天 */
+.type-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.type-chip {
+  display: flex; align-items: baseline; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 14px; box-shadow: var(--shadow); font-size: 13px;
+}
+.type-chip-name { color: var(--muted); flex: 1; }
+.type-chip b { font-size: 20px; font-weight: 800; color: var(--text); }
+.type-chip i { font-style: normal; font-size: 12px; color: var(--muted); }
+
+@media (max-width: 640px) {
+  .choice-grid { gap: 10px; }
+  .choice-btn { min-height: 96px; padding: 14px 8px; }
+  .choice-btn .ce { font-size: 30px; }
+  .choice-btn .cn { font-size: 15px; }
+  .type-chip { padding: 8px 12px; }
+  .type-chip b { font-size: 17px; }
+}
