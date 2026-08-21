@@ -1,10 +1,11 @@
 // sw.js —— Service Worker：离线缓存静态资源（仅 http/https 下生效，file:// 自动跳过）
-const CACHE = 'workout-v16';
+// 根路径 = 每日打卡（index.html），健身打卡在 /100（100.html）
+const CACHE = 'workout-v17';
 
 const ASSETS = [
   '.',
   'index.html',
-  'daily.html',
+  '100.html',
   'styles.css',
   'js/logic.js',
   'js/store.js',
@@ -15,6 +16,7 @@ const ASSETS = [
   'js/daily-ui.js',
   'js/daily-app.js',
   'manifest.webmanifest',
+  'manifest-100.webmanifest',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/apple-touch-icon.png',

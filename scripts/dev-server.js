@@ -44,6 +44,23 @@ const server = http.createServer((req, res) => {
   }
   fs.readFile(file, (err, data) => {
     if (err) {
+      // 无扩展名路径回退到同名 .html（与 Cloudflare Pages 的 pretty URL 一致，如 /100 → 100.html）
+      const htmlFile = !path.extname(file) && path.normalize(file + '.html');
+      if (htmlFile && htmlFile.startsWith(root)) {
+        fs.readFile(htmlFile, (err2, data2) => {
+          if (err2) {
+            res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.end('404 Not Found');
+            return;
+          }
+          res.writeHead(200, {
+            'Content-Type': MIME['.html'],
+            'Cache-Control': 'no-cache',
+          });
+          res.end(data2);
+        });
+        return;
+      }
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('404 Not Found');
       return;
@@ -58,7 +75,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(port, host, () => {
   console.log('');
-  console.log('  🏋️  健身打卡服务已启动');
+  console.log('  📅  打卡服务已启动（/ 每日打卡 · /100 健身打卡）');
   console.log('');
   console.log(`  本机访问:   http://localhost:${port}`);
   const nets = os.networkInterfaces();
