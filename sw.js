@@ -1,6 +1,6 @@
 // sw.js —— Service Worker：离线缓存静态资源（仅 http/https 下生效，file:// 自动跳过）
 // 根路径 = 每日打卡（index.html），健身打卡在 /100（100.html）
-const CACHE = 'workout-v17';
+const CACHE = 'workout-v18';
 
 const ASSETS = [
   '.',

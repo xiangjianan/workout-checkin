@@ -250,6 +250,21 @@ html, body { height: 100%; }
 .data-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .data-actions .btn { flex: 1; min-width: 120px; }
 
+/* 设置弹窗：功能切换分组（每日 / 健身两页互跳） */
+.switch-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.switch-card {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 8px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); text-decoration: none; color: var(--text);
+  touch-action: manipulation; transition: border-color .15s, background .15s;
+}
+.switch-card .switch-emoji { font-size: 22px; line-height: 1; }
+.switch-card .switch-name { font-size: 14px; font-weight: 600; }
+.switch-card .switch-status { font-size: 12px; color: var(--muted); }
+a.switch-card:hover, a.switch-card:active { border-color: var(--primary); background: var(--surface-2); }
+.switch-card.is-current { background: var(--surface-2); cursor: default; }
+.switch-card.is-current .switch-status { color: var(--primary); font-weight: 600; }
+
 /* Settings */
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .field span { font-size: 13px; color: var(--muted); }
@@ -421,7 +436,7 @@ html, body { height: 100%; }
 /* === 无障碍：尊重系统的「减少动态效果」 === */
 @media (prefers-reduced-motion: reduce) {
   .modal-card, .celebration-card, .celebrate-emoji, .celebrate-money, .confetti { animation: none !important; }
-  .btn, .cell, .set-btn, .chip, .exercise-row, .advanced > summary { transition: none !important; }
+  .btn, .cell, .set-btn, .chip, .exercise-row, .advanced > summary, .switch-card { transition: none !important; }
 }
 
 /* === 每日打卡页（daily.html）：二选一打卡按钮 + 类型统计 === */
