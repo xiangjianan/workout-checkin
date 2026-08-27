@@ -5,6 +5,8 @@ const FTApp = {
   view: { year: 0, month: 0 }, // 日历当前视图（month 为 0-based）
   selectedDate: null,
   checkinAdvancedOpen: false, // 训练弹窗「分组完成（高级）」折叠态，跨重渲染保留
+  customGroupsOpen: false, // 「✏️ 自定义」面板展开态，跨重渲染保留
+  customDraft: null, // 面板草稿 { target, count, values[]（前 n-1 组的字符串输入） }
 
   init() {
     this.state = FTStore.load();
@@ -269,7 +271,7 @@ const FTApp = {
     document.getElementById('checkin-title').textContent = title;
     document.getElementById('checkin-sub').textContent = sub;
     document.getElementById('checkin-body').innerHTML =
-      FTUI.renderCheckinBody(this.state, dateStr, this.checkinAdvancedOpen);
+      FTUI.renderCheckinBody(this.state, dateStr, this.checkinAdvancedOpen, this.customGroupsOpen, this.customDraft);
   },
   bindCheckin() {
     // 事件委托：容器稳定，内部每次刷新重建
@@ -280,6 +282,9 @@ const FTApp = {
       const d = e.target.closest('details.advanced');
       if (d) this.checkinAdvancedOpen = d.hasAttribute('open');
     }, true);
+    // 面板内输入只做局部更新（不重渲染，避免输入框丢焦点）；组数 change 才重建面板
+    body.addEventListener('input', (e) => this.handleCheckinInput(e));
+    body.addEventListener('change', (e) => this.handleCheckinChange(e));
   },
   handleCheckinAction(e) {
     const btn = e.target.closest('[data-action]');
@@ -310,6 +315,14 @@ const FTApp = {
       this.commit(FTStore.clearGroupsAll(this.state, dateStr));
       return;
     }
+    if (action === 'toggle-custom-groups') {
+      this.toggleCustomGroups();
+      return;
+    }
+    if (action === 'apply-groups-custom') {
+      this.applyCustomGroups(dateStr);
+      return;
+    }
     if (action === 'toggle-set-all') {
       this.commit(FTStore.toggleSetAll(this.state, dateStr, Number(btn.dataset.set)));
       return;
@@ -334,6 +347,83 @@ const FTApp = {
         this.commit(FTStore.toggleSet(this.state, dateStr, exId, Number(btn.dataset.set)));
         break;
     }
+  },
+
+  // ---- 自定义分组面板 ----
+  // 打开面板时初始化草稿：有当前分组则预填，否则默认 2 组均分
+  initCustomDraft(target, curGroups) {
+    if (Array.isArray(curGroups) && curGroups.length >= 2) {
+      return { target, count: curGroups.length, values: curGroups.slice(0, -1).map(String) };
+    }
+    const groups = FTLogic.splitEvenly(target, 2);
+    return { target, count: 2, values: groups.slice(0, -1).map(String) };
+  },
+
+  toggleCustomGroups() {
+    this.customGroupsOpen = !this.customGroupsOpen;
+    if (this.customGroupsOpen) {
+      const wi = FTLogic.workoutIndexForDate(this.state.startDate, this.selectedDate);
+      const targets = FTLogic.targetsForWorkout(this.state.startDate, wi);
+      const target = targets[FT_EXERCISES[0].id];
+      // 目标变了（换了日期/补打卡）或首次打开：重建草稿
+      if (!this.customDraft || this.customDraft.target !== target) {
+        const rec = this.state.records[this.selectedDate];
+        const ref = rec && rec.exercises && rec.exercises[FT_EXERCISES[0].id];
+        this.customDraft = this.initCustomDraft(target, ref && ref.groupReps);
+      }
+    }
+    this.refreshCheckin();
+  },
+
+  // 每组数量输入：写草稿 + 仅局部更新面板（尾组/合计/应用按钮）
+  handleCheckinInput(e) {
+    const input = e.target.closest('.cg-rep:not(.tail)');
+    if (!input || !this.customDraft) return;
+    const idx = Number(input.dataset.idx);
+    if (!Number.isInteger(idx) || idx >= this.customDraft.values.length) return;
+    const values = [...this.customDraft.values];
+    values[idx] = input.value;
+    this.customDraft = { ...this.customDraft, values };
+    this.updateCustomPanelDom();
+  },
+
+  // 组数变更：合法则按新组数重新均分并重建面板；非法则回弹为草稿里的上一个合法值
+  handleCheckinChange(e) {
+    const input = e.target.closest('.cg-count');
+    if (!input || !this.customDraft) return;
+    const count = Number(input.value);
+    const groups = FTLogic.splitEvenly(this.customDraft.target, count);
+    if (!groups) {
+      input.value = String(this.customDraft.count);
+      return;
+    }
+    this.customDraft = { ...this.customDraft, count, values: groups.slice(0, -1).map(String) };
+    this.refreshCheckin(); // 重建每组输入框（此时光标已离开组数框）
+  },
+
+  // 面板局部更新：重算尾组/合计/应用按钮态，不触发整体重渲染
+  updateCustomPanelDom() {
+    const panel = document.querySelector('#checkin-body .custom-groups');
+    if (!panel || !this.customDraft) return;
+    const pv = FTLogic.customGroupsPreview(this.customDraft.target, this.customDraft.values);
+    const tail = panel.querySelector('.cg-rep.tail');
+    if (tail) tail.value = FTUI.formatTail(pv);
+    const sum = panel.querySelector('.cg-sum');
+    if (sum) {
+      sum.textContent = FTUI.formatSumLine(pv, this.customDraft.target);
+      sum.classList.toggle('err', !pv.ok);
+    }
+    const apply = panel.querySelector('[data-action="apply-groups-custom"]');
+    if (apply) apply.disabled = !pv.ok;
+  },
+
+  applyCustomGroups(dateStr) {
+    if (!this.customDraft) return;
+    const pv = FTLogic.customGroupsPreview(this.customDraft.target, this.customDraft.values);
+    if (!pv.ok) return;
+    const groupReps = this.customDraft.values.map(Number).concat(pv.last);
+    this.customGroupsOpen = false; // commit → rerender 时面板收起
+    this.commit(FTStore.applyGroupsAll(this.state, dateStr, groupReps));
   },
 
   // ---- 设置弹窗 ----
