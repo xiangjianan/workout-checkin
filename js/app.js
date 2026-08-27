@@ -259,6 +259,11 @@ const FTApp = {
 
   // ---- 打卡弹窗 ----
   openCheckin(dateStr) {
+    // 换日期时重置自定义分组面板：草稿携带旧目标，跨日期沿用会按错误目标校验/提交
+    if (dateStr !== this.selectedDate) {
+      this.customGroupsOpen = false;
+      this.customDraft = null;
+    }
     this.selectedDate = dateStr;
     this.openModal('modal-checkin');
     this.refreshCheckin();
@@ -356,6 +361,7 @@ const FTApp = {
       return { target, count: curGroups.length, values: curGroups.slice(0, -1).map(String) };
     }
     const groups = FTLogic.splitEvenly(target, 2);
+    if (!groups) return null; // 目标 < 2 无法均分：ui.js 渲染层同样防御，面板不渲染
     return { target, count: 2, values: groups.slice(0, -1).map(String) };
   },
 
@@ -419,7 +425,12 @@ const FTApp = {
 
   applyCustomGroups(dateStr) {
     if (!this.customDraft) return;
-    const pv = FTLogic.customGroupsPreview(this.customDraft.target, this.customDraft.values);
+    // 不信任草稿里的 target：按当日目标重算并校验（防跨日期陈旧草稿按错误目标提交）
+    const wi = FTLogic.workoutIndexForDate(this.state.startDate, dateStr);
+    if (wi === null) return;
+    const targets = FTLogic.targetsForWorkout(this.state.startDate, wi);
+    const target = targets[FT_EXERCISES[0].id];
+    const pv = FTLogic.customGroupsPreview(target, this.customDraft.values);
     if (!pv.ok) return;
     const groupReps = this.customDraft.values.map(Number).concat(pv.last);
     this.customGroupsOpen = false; // commit → rerender 时面板收起
