@@ -123,3 +123,41 @@ test('clearGroups / resetExercise 清空 groupReps', () => {
   assert.deepEqual([...s.records['2024-06-13'].exercises.pushup.groupReps], []);
   assert.deepEqual([...s.records['2024-06-13'].exercises.pushup.setDone], []);
 });
+
+// ---- normalizeRecords 迁移风险路径 ----
+// 注：对象同样诞生于 vm 上下文，先展开拷贝到宿主对象再 deepEqual（同数组惯例）。
+
+test('normalizeRecords：空输入与非法类型返回 {}', () => {
+  const { FTStore } = loadStore();
+  assert.deepEqual({ ...FTStore.normalizeRecords(null) }, {});
+  assert.deepEqual({ ...FTStore.normalizeRecords({}) }, {});
+  assert.deepEqual({ ...FTStore.normalizeRecords('abc') }, {}); // 字符串型 records：守卫生效
+});
+
+test('applyGroupsAll + toggleSetAll 批量链路：completed 按各组数量同步累加', () => {
+  const { FTStore, FT_EXERCISES } = loadStore();
+  let s = { startDate: '2024-06-13', records: {} };
+  s = FTStore.applyGroupsAll(s, '2024-06-13', [34, 33, 33]);
+  s = FTStore.toggleSetAll(s, '2024-06-13', 0);
+  for (const ex of FT_EXERCISES) {
+    assert.equal(s.records['2024-06-13'].exercises[ex.id].completed, 34, `${ex.id} 第 1 组后应为 34`);
+  }
+  s = FTStore.toggleSetAll(s, '2024-06-13', 1);
+  for (const ex of FT_EXERCISES) {
+    assert.equal(s.records['2024-06-13'].exercises[ex.id].completed, 67, `${ex.id} 第 2 组后应为 67`);
+  }
+});
+
+test('脏数据 setDone 超长：规范化截断到 groupReps 长度，completed 不丢', () => {
+  const { FTStore } = loadStore();
+  const dirty = {
+    '2024-06-13': {
+      exercises: { pushup: { completed: 100, sets: 4, reps: 25, setDone: [true, true, true, true, true] } },
+    },
+  };
+  const records = FTStore.normalizeRecords(dirty);
+  const ex = records['2024-06-13'].exercises.pushup;
+  assert.deepEqual([...ex.groupReps], [25, 25, 25, 25]);
+  assert.equal(ex.setDone.length, 4); // 超出 groupReps 长度的勾选被截断
+  assert.equal(ex.completed, 100);    // 已完成进度保留
+});

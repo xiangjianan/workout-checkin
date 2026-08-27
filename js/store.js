@@ -26,7 +26,7 @@ const FTStore = {
   // 把历史记录（可能是旧 sets/reps 格式）整体规范化为 groupReps 形态
   normalizeRecords(records) {
     const out = {};
-    for (const [dateStr, rec] of Object.entries(records || {})) {
+    for (const [dateStr, rec] of Object.entries(records && typeof records === 'object' ? records : {})) {
       const exercises = {};
       for (const exId of Object.keys((rec && rec.exercises) || {})) {
         exercises[exId] = this._exercise(rec, exId);
