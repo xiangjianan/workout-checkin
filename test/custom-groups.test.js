@@ -30,4 +30,34 @@ test('splitEvenly：组数非法返回 null（<2、>total、非整数、total �
   assert.equal(FTLogic.splitEvenly(100, 101), null);
   assert.equal(FTLogic.splitEvenly(100, 2.5), null);
   assert.equal(FTLogic.splitEvenly('x', 3), null);
+  assert.equal(FTLogic.splitEvenly(100.5, 3), null); // 数值型非整数 total
+  assert.deepEqual([...FTLogic.splitEvenly(100, 100)], new Array(100).fill(1)); // sets===total 临界合法
+});
+
+// ---- FTLogic.customGroupsPreview ----
+
+test('customGroupsPreview：前面组合法则尾组自动补差', () => {
+  const { FTLogic } = loadFT();
+  const pv = FTLogic.customGroupsPreview(100, ['34', '33']);
+  assert.equal(pv.ok, true);
+  assert.equal(pv.last, 33);
+  assert.equal(pv.sum, 100);
+  assert.equal(pv.error, '');
+});
+
+test('customGroupsPreview：前面组之和过大则失败', () => {
+  const { FTLogic } = loadFT();
+  const pv = FTLogic.customGroupsPreview(100, ['60', '50']);
+  assert.equal(pv.ok, false);
+  assert.equal(pv.last, -10);
+  assert.ok(pv.error.includes('过大'), '错误信息应提示前面组数量过大');
+});
+
+test('customGroupsPreview：每组须为 ≥1 的整数（空/0/小数/非数字）', () => {
+  const { FTLogic } = loadFT();
+  for (const bad of [['', '33'], ['0', '33'], ['3.5', '33'], ['abc', '33']]) {
+    const pv = FTLogic.customGroupsPreview(100, bad);
+    assert.equal(pv.ok, false, `${JSON.stringify(bad)} 应判无效`);
+    assert.ok(pv.error.includes('≥1'), `错误信息应说明每组 ≥1：${pv.error}`);
+  }
 });

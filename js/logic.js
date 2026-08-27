@@ -89,6 +89,23 @@ const FTLogic = {
     const rem = total % sets;
     return Array.from({ length: sets }, (_, i) => (i < rem ? base + 1 : base));
   },
+  // 自定义分组草稿预览：values 为前 n-1 组的原始输入（字符串），
+  // 返回 { ok, last（尾组=目标-前面组之和）, sum, error }
+  customGroupsPreview(target, values) {
+    const nums = values.map((v) => {
+      const n = Number(String(v).trim());
+      return Number.isInteger(n) ? n : NaN;
+    });
+    if (nums.some((n) => !Number.isInteger(n) || n < 1)) {
+      return { ok: false, last: null, sum: null, error: '每组数量需为 ≥1 的整数' };
+    }
+    const headSum = nums.reduce((a, b) => a + b, 0);
+    const last = target - headSum;
+    if (last < 1) {
+      return { ok: false, last, sum: headSum, error: '前面组数量过大，最后一组不够分' };
+    }
+    return { ok: true, last, sum: target, error: '' };
+  },
 
   // ---- 单次训练完成判定 ----
   exerciseCompleted(record, exId) {
