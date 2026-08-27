@@ -21,8 +21,8 @@ function loadBundle(files, bridgeNames) {
   return ctx.__EXPORTS;
 }
 
-function loadFT(files = ['js/logic.js', 'js/ui.js']) {
-  return loadBundle(files, ['FT_CONFIG', 'FT_EXERCISES', 'FTLogic', 'FTUI']);
+function loadFT(files = ['js/logic.js', 'js/ui.js'], bridgeNames = ['FT_CONFIG', 'FT_EXERCISES', 'FTLogic', 'FTUI']) {
+  return loadBundle(files, bridgeNames);
 }
 
 // sw.js：Service Worker。预置 SW 运行所需全局（self/location/caches 等，可被

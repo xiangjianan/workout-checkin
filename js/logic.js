@@ -81,6 +81,14 @@ const FTLogic = {
     }
     return opts;
   },
+  // 把 total 个拆成 sets 组的近似均匀分组，余数分给前几组（前大后小）
+  // 如 (100, 3) → [34, 33, 33]；组数非法（非整数 / <2 / >total）返回 null
+  splitEvenly(total, sets) {
+    if (!Number.isInteger(total) || !Number.isInteger(sets) || sets < 2 || sets > total) return null;
+    const base = Math.floor(total / sets);
+    const rem = total % sets;
+    return Array.from({ length: sets }, (_, i) => (i < rem ? base + 1 : base));
+  },
 
   // ---- 单次训练完成判定 ----
   exerciseCompleted(record, exId) {
