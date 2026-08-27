@@ -252,8 +252,23 @@ const FTUI = {
     `;
   },
 
+  // 尾组显示：补差值带符号（如 +33）；缺口原样显示（-10 / 0）；无效输入显示 —
+  formatTail(pv) {
+    if (pv.last === null) return '—';
+    return pv.last >= 1 ? `+${pv.last}` : String(pv.last);
+  },
+
+  // 合计行：有效时「合计 T / T ✓」，否则「合计 X / T · 错误文案」
+  formatSumLine(pv, target) {
+    return pv.ok
+      ? `合计 ${target} / ${target} ✓`
+      : `合计 ${pv.sum === null ? '?' : pv.sum} / ${target} · ${pv.error}`;
+  },
+
   // 自定义分组面板：组数自动均分 → 前 n-1 组可调 → 最后一组自动补差（只读）
   renderCustomGroupsPanel(target, draft) {
+    // target 非整数或 <2 时 splitEvenly 双双返回 null，groups.length 会抛错，这里直接不渲染
+    if (!Number.isInteger(target) || target < 2) return '';
     const groups = FTLogic.splitEvenly(target, draft.count) || FTLogic.splitEvenly(target, 2);
     const count = groups.length;
     // 草稿长度与组数不匹配时（如刚改完组数），回退为均分默认值
@@ -263,10 +278,8 @@ const FTUI = {
       <label class="cg-item"><span>第${i + 1}组</span>
         <input class="cg-rep" data-idx="${i}" type="number" inputmode="numeric" min="1" value="${v}">
       </label>`).join('');
-    const tailVal = pv.last === null ? '—' : `+${pv.last}`;
-    const sumLine = pv.ok
-      ? `合计 ${target} / ${target} ✓`
-      : `合计 ${pv.sum === null ? '?' : pv.sum} / ${target} · ${pv.error}`;
+    const tailVal = this.formatTail(pv);
+    const sumLine = this.formatSumLine(pv, target);
     return `
       <div class="custom-groups">
         <div class="cg-row">
@@ -280,7 +293,7 @@ const FTUI = {
             <input class="cg-rep tail" readonly tabindex="-1" value="${tailVal}">
           </label>
         </div>
-        <div class="cg-sum ${pv.ok ? '' : 'err'}">${sumLine}</div>
+        <div class="cg-sum ${pv.ok ? '' : 'err'}" aria-live="polite">${sumLine}</div>
         <button class="btn btn-mini primary" data-action="apply-groups-custom"${pv.ok ? '' : ' disabled'}>应用分组</button>
       </div>`;
   },

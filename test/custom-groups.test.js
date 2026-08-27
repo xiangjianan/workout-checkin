@@ -262,6 +262,8 @@ test('面板:前面组之和过大时应用按钮禁用并显示错误', () => {
   assert.match(html, /apply-groups-custom" disabled/);
   assert.match(html, /cg-sum err/);
   assert.match(html, /过大/);
+  assert.match(html, /-10/);          // 缺口原样显示
+  assert.doesNotMatch(html, /\+-10/); // 不出现 +号拼负数的「+-10」
 });
 
 test('面板:默认关闭时不渲染面板,但 ✏️ 按钮仍在', () => {
@@ -270,4 +272,33 @@ test('面板:默认关闭时不渲染面板,但 ✏️ 按钮仍在', () => {
   // 注意断言面板容器而非裸 'custom-groups'：chip 的 data-action="toggle-custom-groups" 含该子串
   assert.ok(!html.includes('class="custom-groups"'), '面板不应出现');
   assert.match(html, /✏️ 自定义/);
+});
+
+test('面板回退:组数非法(>目标)回退 2 组均分,长度不符的草稿一并重置', () => {
+  const { FTUI } = loadFT();
+  const draft = { target: 100, count: 200, values: ['34', '33'] };
+  const html = FTUI.renderBatchSection(null, targetsAll(100), true, draft);
+  assert.match(html, /value="2"/);    // 组数框回退 2
+  assert.match(html, /value="50"/);   // 前组输入回退均分 50
+  assert.match(html, /\+50/);         // 尾组 +50
+});
+
+test('面板回退:values 长度与组数不匹配时,输入框回退均分默认值', () => {
+  const { FTUI } = loadFT();
+  const draft = { target: 100, count: 4, values: ['40'] };
+  const html = FTUI.renderBatchSection(null, targetsAll(100), true, draft);
+  assert.match(html, /value="4"/);    // 组数框保持 4
+  assert.match(html, /value="25"/);   // 前 3 组输入回退均分 25
+  assert.match(html, /\+25/);         // 尾组 +25
+  assert.doesNotMatch(html, /value="40"/); // 旧草稿值被丢弃
+});
+
+test('面板回退:draft 为 null 时按 2 组均分初始化,应用按钮可点', () => {
+  const { FTUI } = loadFT();
+  const html = FTUI.renderBatchSection(null, targetsAll(100), true, null);
+  assert.match(html, /value="2"/);
+  assert.match(html, /value="50"/);
+  assert.match(html, /\+50/);
+  assert.match(html, /合计 100 \/ 100 ✓/);
+  assert.doesNotMatch(html, /apply-groups-custom" disabled/);
 });
