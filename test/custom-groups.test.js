@@ -162,6 +162,17 @@ test('脏数据 setDone 超长：规范化截断到 groupReps 长度，completed
   assert.equal(ex.completed, 100);    // 已完成进度保留
 });
 
+test('脏数据 groupReps 非正整数元素：规范化时被过滤，completed 不丢', () => {
+  const { FTStore } = loadStore();
+  const records = FTStore.normalizeRecords({
+    '2024-06-13': { exercises: { pushup: { completed: 5, groupReps: [34, 'x', -1, 33], setDone: [] } } },
+  });
+  const ex = records['2024-06-13'].exercises.pushup;
+  assert.deepEqual([...ex.groupReps], [34, 33]);
+  assert.equal(ex.setDone.length, 0); // setDone 与过滤后长度对齐
+  assert.equal(ex.completed, 5);      // 已完成进度保留
+});
+
 // ---- UI:逐组数量显示 / chips 高亮 / 当前摘要 ----
 
 // 辅助构造器需要遍历项目列表，共享一次加载（FTUI/FTLogic 均为纯函数，可安全复用）
@@ -195,7 +206,7 @@ test('renderBatchSection:非均匀分组不高亮任何 chip', () => {
 test('renderBatchSection:均匀分组时高亮对应 chip', () => {
   const { FTUI } = loadFT();
   const html = FTUI.renderBatchSection(recWithGroups([25, 25, 25, 25], [false, false, false, false]), targetsAll(100));
-  assert.match(html, /class="chip on"[\s\S]*?data-sets="4"/);
+  assert.match(html, /class="chip on"\s+data-action="apply-groups-all" data-sets="4"/);
 });
 
 test('renderBatchSection:批量逐组按钮显示每组数量', () => {
@@ -211,4 +222,22 @@ test('renderExerciseCard:mini 组按钮显示每组数量,组号在 title', () =
   const html = FTUI.renderExerciseCard(FT_EXERCISES[0], 100, rec);
   assert.match(html, /title="第1组 · 34 个"/);
   assert.match(html, />34 ✓</);
+  assert.match(html, />33 🔒</); // prefix=1：第 3 组锁定不可点
+});
+
+test('renderBatchSection:无分组时不显示当前摘要', () => {
+  const { FTUI } = loadFT();
+  const html = FTUI.renderBatchSection(recWithGroups([], []), targetsAll(100));
+  assert.doesNotMatch(html, /当前 \d+ 组/);
+});
+
+test('renderBatchSection:摘要均匀显示每组 N,非均匀超过 6 组截断', () => {
+  const { FTUI } = loadFT();
+  const eight = FTUI.renderBatchSection(
+    recWithGroups([17, 17, 13, 13, 10, 10, 10, 10], new Array(8).fill(false)),
+    targetsAll(100),
+  );
+  assert.match(eight, /当前 8 组 17\+17\+13\+13\+10\+10\+…/);
+  const uniform = FTUI.renderBatchSection(recWithGroups([25, 25, 25, 25], [false, false, false, false]), targetsAll(100));
+  assert.match(uniform, /当前 4 组 每组 25/);
 });

@@ -63,11 +63,12 @@ const FTStore = {
   },
 
   // 取某天某项目的规范化记录（深拷贝，避免外部误改）
-  // 旧均匀分组字段 sets/reps 自动迁移为 groupReps 数组（长度 = sets，每项 = reps）
+  // 旧均匀分组字段 sets/reps 自动迁移为 groupReps 数组（长度 = sets，每项 = reps）；
+  // groupReps 中的非正整数元素（手工篡改 localStorage 可能出现）直接过滤
   _exercise(record, exId) {
     const prev = (record.exercises && record.exercises[exId]) || {};
     const groupReps = Array.isArray(prev.groupReps)
-      ? [...prev.groupReps]
+      ? prev.groupReps.filter((n) => Number.isInteger(n) && n >= 1)
       : prev.sets && prev.reps
         ? new Array(prev.sets).fill(prev.reps)
         : [];

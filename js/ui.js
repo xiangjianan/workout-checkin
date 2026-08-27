@@ -184,6 +184,12 @@ const FTUI = {
     // 分组方案 chips：只列能整除的方案，点一下即应用
     // 仅当当前分组恰好均匀（每组同值）时，高亮对应 chip
     const uniform = curSets > 0 && refGroups.every((r) => r === refGroups[0]);
+    // 标题摘要：均匀显示「每组 N」（50组×2 这类方案全列会占满整行）；非均匀超过 6 组截断
+    const summary = curSets > 0 ? ` · 当前 ${curSets} 组 ${
+      uniform ? `每组 ${refGroups[0]}`
+        : curSets > 6 ? refGroups.slice(0, 6).join('+') + '+…'
+        : refGroups.join('+')
+    }` : '';
     const chips = FTLogic.groupOptions(sharedTarget).map((o) => `
       <button class="chip ${uniform && curSets === o.sets && refGroups[0] === o.reps ? 'on' : ''}"
               data-action="apply-groups-all" data-sets="${o.sets}" data-reps="${o.reps}">
@@ -229,7 +235,7 @@ const FTUI = {
     return `
       <div class="batch-section">
         <div class="batch-row">
-          <span class="batch-title">分组方案 <small>每项目标 ${sharedTarget} 个 · 一键应用于全部 5 项${curSets > 0 ? ` · 当前 ${curSets} 组 ${refGroups.join('+')}` : ''}</small></span>
+          <span class="batch-title">分组方案 <small>每项目标 ${sharedTarget} 个 · 一键应用于全部 5 项${summary}</small></span>
           <div class="chips">${chips}</div>
           ${curSets > 0 ? '<button class="btn btn-mini" data-action="clear-groups-all">清除分组</button>' : ''}
         </div>
