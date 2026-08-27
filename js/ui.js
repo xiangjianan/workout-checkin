@@ -182,8 +182,10 @@ const FTUI = {
     const total = FT_EXERCISES.length;
 
     // 分组方案 chips：只列能整除的方案，点一下即应用
+    // 仅当当前分组恰好均匀（每组同值）时，高亮对应 chip
+    const uniform = curSets > 0 && refGroups.every((r) => r === refGroups[0]);
     const chips = FTLogic.groupOptions(sharedTarget).map((o) => `
-      <button class="chip ${curSets === o.sets ? 'on' : ''}"
+      <button class="chip ${uniform && curSets === o.sets && refGroups[0] === o.reps ? 'on' : ''}"
               data-action="apply-groups-all" data-sets="${o.sets}" data-reps="${o.reps}">
         ${o.sets}组 ×${o.reps}
       </button>`).join('');
@@ -215,7 +217,7 @@ const FTUI = {
         const canToggle = k === minP || (minP === maxP && k === minP - 1);
         const locked = !canToggle;
         return `<button class="set-btn batch ${cls} ${locked ? 'locked' : ''}" data-action="toggle-set-all" data-set="${k}" ${locked ? 'disabled' : ''}>
-          第${k + 1}组 <em>${mark}</em>${locked ? '<i class="lock">🔒</i>' : ''}</button>`;
+          第${k + 1}组·${refGroups[k]} <em>${mark}</em>${locked ? '<i class="lock">🔒</i>' : ''}</button>`;
       }).join('');
       batchSets = `
         <div class="batch-sets">
@@ -227,7 +229,7 @@ const FTUI = {
     return `
       <div class="batch-section">
         <div class="batch-row">
-          <span class="batch-title">分组方案 <small>每项目标 ${sharedTarget} 个 · 一键应用于全部 5 项</small></span>
+          <span class="batch-title">分组方案 <small>每项目标 ${sharedTarget} 个 · 一键应用于全部 5 项${curSets > 0 ? ` · 当前 ${curSets} 组 ${refGroups.join('+')}` : ''}</small></span>
           <div class="chips">${chips}</div>
           ${curSets > 0 ? '<button class="btn btn-mini" data-action="clear-groups-all">清除分组</button>' : ''}
         </div>
@@ -259,8 +261,7 @@ const FTUI = {
         const locked = !(k === prefix || k === prefix - 1);
         return `<button class="set-btn mini ${setDone[k] ? 'on' : ''} ${locked ? 'locked' : ''}"
             data-action="toggle-set" data-set="${k}"${locked ? ' disabled' : ''}
-            title="第${k + 1}组" aria-label="第${k + 1}组">
-            ${k + 1}${setDone[k] ? ' ✓' : locked ? ' 🔒' : ''}</button>`;
+            title="第${k + 1}组 · ${groupReps[k]} 个" aria-label="第${k + 1}组 ${groupReps[k]} 个">${groupReps[k]}${setDone[k] ? ' ✓' : locked ? ' 🔒' : ''}</button>`;
       }).join('');
       setsHtml = `<div class="sets-row tight">${btns}</div>`;
     }

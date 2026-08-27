@@ -161,3 +161,54 @@ test('脏数据 setDone 超长：规范化截断到 groupReps 长度，completed
   assert.equal(ex.setDone.length, 4); // 超出 groupReps 长度的勾选被截断
   assert.equal(ex.completed, 100);    // 已完成进度保留
 });
+
+// ---- UI:逐组数量显示 / chips 高亮 / 当前摘要 ----
+
+// 辅助构造器需要遍历项目列表，共享一次加载（FTUI/FTLogic 均为纯函数，可安全复用）
+const FT = loadFT();
+
+function targetsAll(n) {
+  const t = {};
+  for (const ex of FT.FT_EXERCISES) t[ex.id] = n;
+  return t;
+}
+function recWithGroups(groups, setDone) {
+  const exercises = {};
+  for (const ex of FT.FT_EXERCISES) {
+    exercises[ex.id] = { completed: 0, groupReps: [...groups], setDone: [...setDone] };
+  }
+  return { exercises };
+}
+
+test('renderBatchSection:当前分组摘要显示 N 组与各组数量', () => {
+  const { FTUI } = loadFT();
+  const html = FTUI.renderBatchSection(recWithGroups([34, 33, 33], [false, false, false]), targetsAll(100));
+  assert.match(html, /当前 3 组 34\+33\+33/);
+});
+
+test('renderBatchSection:非均匀分组不高亮任何 chip', () => {
+  const { FTUI } = loadFT();
+  const html = FTUI.renderBatchSection(recWithGroups([34, 33, 33], [false, false, false]), targetsAll(100));
+  assert.doesNotMatch(html, /class="chip on"/);
+});
+
+test('renderBatchSection:均匀分组时高亮对应 chip', () => {
+  const { FTUI } = loadFT();
+  const html = FTUI.renderBatchSection(recWithGroups([25, 25, 25, 25], [false, false, false, false]), targetsAll(100));
+  assert.match(html, /class="chip on"[\s\S]*?data-sets="4"/);
+});
+
+test('renderBatchSection:批量逐组按钮显示每组数量', () => {
+  const { FTUI } = loadFT();
+  const html = FTUI.renderBatchSection(recWithGroups([34, 33, 33], [false, false, false]), targetsAll(100));
+  assert.match(html, /第1组·34/);
+  assert.match(html, /第2组·33/);
+});
+
+test('renderExerciseCard:mini 组按钮显示每组数量,组号在 title', () => {
+  const { FTUI, FT_EXERCISES } = loadFT();
+  const rec = { exercises: { pushup: { completed: 34, groupReps: [34, 33, 33], setDone: [true, false, false] } } };
+  const html = FTUI.renderExerciseCard(FT_EXERCISES[0], 100, rec);
+  assert.match(html, /title="第1组 · 34 个"/);
+  assert.match(html, />34 ✓</);
+});
