@@ -177,7 +177,8 @@ const FTUI = {
     if (!allSame) return ''; // 各项目标不一致时不提供批量分组
 
     const ref = record && record.exercises && record.exercises[FT_EXERCISES[0].id];
-    const curSets = (ref && ref.sets) || 0;
+    const refGroups = (ref && ref.groupReps) || [];
+    const curSets = refGroups.length;
     const total = FT_EXERCISES.length;
 
     // 分组方案 chips：只列能整除的方案，点一下即应用
@@ -238,7 +239,8 @@ const FTUI = {
   renderExerciseCard(ex, target, record) {
     const exRec = record && record.exercises && record.exercises[ex.id];
     const completed = FTLogic.exerciseCompleted(record, ex.id);
-    const sets = (exRec && exRec.sets) || 0;
+    const groupReps = (exRec && exRec.groupReps) || [];
+    const sets = groupReps.length;
     const setDone = (exRec && exRec.setDone) || [];
     const pct = Math.min(100, Math.round((completed / target) * 100));
     const isDone = completed >= target;

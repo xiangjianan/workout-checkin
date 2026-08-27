@@ -301,7 +301,9 @@ const FTApp = {
       return;
     }
     if (action === 'apply-groups-all') {
-      this.commit(FTStore.applyGroupsAll(this.state, dateStr, Number(btn.dataset.sets), Number(btn.dataset.reps)));
+      const sets = Number(btn.dataset.sets);
+      const reps = Number(btn.dataset.reps);
+      this.commit(FTStore.applyGroupsAll(this.state, dateStr, new Array(sets).fill(reps)));
       return;
     }
     if (action === 'clear-groups-all') {

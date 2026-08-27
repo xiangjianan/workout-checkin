@@ -71,3 +71,55 @@ test('customGroupsPreview：每组须为 ≥1 的整数（空/0/负数/小数/�
   assert.equal(pvBad.ok, false);
   assert.equal(pvBad.error, '目标数量非法');
 });
+
+// ---- FTStore：groupReps 数据模型 ----
+
+test('applyGroups：接收每组数量数组，groupReps/setDone 对齐', () => {
+  const { FTStore } = loadStore();
+  let s = { startDate: '2024-06-13', records: {} };
+  s = FTStore.applyGroups(s, '2024-06-13', 'pushup', [34, 33, 33]);
+  const ex = s.records['2024-06-13'].exercises.pushup;
+  assert.deepEqual([...ex.groupReps], [34, 33, 33]);
+  assert.equal(ex.setDone.length, 3);
+  assert.equal(ex.completed, 0);
+});
+
+test('非均匀分组逐组打卡：completed 按各组数量累加', () => {
+  const { FTStore } = loadStore();
+  let s = { startDate: '2024-06-13', records: {} };
+  s = FTStore.applyGroups(s, '2024-06-13', 'pushup', [34, 33, 33]);
+  s = FTStore.toggleSet(s, '2024-06-13', 'pushup', 0);
+  assert.equal(s.records['2024-06-13'].exercises.pushup.completed, 34);
+  s = FTStore.toggleSet(s, '2024-06-13', 'pushup', 1);
+  assert.equal(s.records['2024-06-13'].exercises.pushup.completed, 67);
+});
+
+test('旧格式记录（sets/reps）规范化为 groupReps 后可继续打卡', () => {
+  const { FTStore } = loadStore();
+  const legacy = {
+    '2024-06-13': {
+      exercises: { pushup: { completed: 25, sets: 4, reps: 25, setDone: [true, false, false, false] } },
+    },
+  };
+  const records = FTStore.normalizeRecords(legacy);
+  const ex = records['2024-06-13'].exercises.pushup;
+  assert.deepEqual([...ex.groupReps], [25, 25, 25, 25]);
+  assert.equal(ex.sets, undefined); // 旧字段不再保留
+  assert.equal(ex.setDone.length, 4);
+
+  let s = { startDate: '2024-06-13', records };
+  s = FTStore.toggleSet(s, '2024-06-13', 'pushup', 1);
+  assert.equal(s.records['2024-06-13'].exercises.pushup.completed, 50);
+});
+
+test('clearGroups / resetExercise 清空 groupReps', () => {
+  const { FTStore } = loadStore();
+  let s = { startDate: '2024-06-13', records: {} };
+  s = FTStore.applyGroups(s, '2024-06-13', 'pushup', [34, 33, 33]);
+  s = FTStore.clearGroups(s, '2024-06-13', 'pushup');
+  assert.deepEqual([...s.records['2024-06-13'].exercises.pushup.groupReps], []);
+  s = FTStore.applyGroups(s, '2024-06-13', 'pushup', [34, 33, 33]);
+  s = FTStore.resetExercise(s, '2024-06-13', 'pushup');
+  assert.deepEqual([...s.records['2024-06-13'].exercises.pushup.groupReps], []);
+  assert.deepEqual([...s.records['2024-06-13'].exercises.pushup.setDone], []);
+});

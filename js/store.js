@@ -15,12 +15,25 @@ const FTStore = {
       const parsed = JSON.parse(raw);
       return {
         startDate: typeof parsed.startDate === 'string' ? parsed.startDate : FTLogic.todayStr(),
-        records: parsed.records && typeof parsed.records === 'object' ? parsed.records : {},
+        records: this.normalizeRecords(parsed.records),
       };
     } catch (e) {
       console.error('[FT] 数据读取失败，使用默认状态', e);
       return this.defaultState();
     }
+  },
+
+  // 把历史记录（可能是旧 sets/reps 格式）整体规范化为 groupReps 形态
+  normalizeRecords(records) {
+    const out = {};
+    for (const [dateStr, rec] of Object.entries(records || {})) {
+      const exercises = {};
+      for (const exId of Object.keys((rec && rec.exercises) || {})) {
+        exercises[exId] = this._exercise(rec, exId);
+      }
+      out[dateStr] = { ...rec, exercises };
+    }
+    return out;
   },
 
   save(state) {
@@ -41,7 +54,7 @@ const FTStore = {
     if (typeof parsed.startDate !== 'string' || !parsed.records || typeof parsed.records !== 'object') {
       throw new Error('文件格式不正确');
     }
-    return { startDate: parsed.startDate, records: parsed.records };
+    return { startDate: parsed.startDate, records: this.normalizeRecords(parsed.records) };
   },
 
   // ---- 不可变更新助手 ----
@@ -50,13 +63,18 @@ const FTStore = {
   },
 
   // 取某天某项目的规范化记录（深拷贝，避免外部误改）
+  // 旧均匀分组字段 sets/reps 自动迁移为 groupReps 数组（长度 = sets，每项 = reps）
   _exercise(record, exId) {
     const prev = (record.exercises && record.exercises[exId]) || {};
+    const groupReps = Array.isArray(prev.groupReps)
+      ? [...prev.groupReps]
+      : prev.sets && prev.reps
+        ? new Array(prev.sets).fill(prev.reps)
+        : [];
     return {
       completed: prev.completed || 0,
-      sets: prev.sets || 0,
-      reps: prev.reps || 0,
-      setDone: Array.isArray(prev.setDone) ? [...prev.setDone] : [],
+      groupReps,
+      setDone: Array.isArray(prev.setDone) ? prev.setDone.slice(0, groupReps.length) : [],
     };
   },
 
@@ -79,19 +97,17 @@ const FTStore = {
   resetExercise(state, dateStr, exId) {
     return this.updateExercise(state, dateStr, exId, () => ({
       completed: 0,
-      sets: 0,
-      reps: 0,
+      groupReps: [],
       setDone: [],
     }));
   },
 
-  // 应用分组配置：重新开始本项目的分组进度
-  applyGroups(state, dateStr, exId, sets, reps) {
+  // 应用分组配置：groupReps 为每组数量数组（如 [34, 33, 33]），重新开始本项目的分组进度
+  applyGroups(state, dateStr, exId, groupReps) {
     return this.updateExercise(state, dateStr, exId, () => ({
       completed: 0,
-      sets,
-      reps,
-      setDone: new Array(sets).fill(false),
+      groupReps: [...groupReps],
+      setDone: new Array(groupReps.length).fill(false),
     }));
   },
 
@@ -99,8 +115,7 @@ const FTStore = {
   clearGroups(state, dateStr, exId) {
     return this.updateExercise(state, dateStr, exId, (ex) => ({
       completed: ex.completed,
-      sets: 0,
-      reps: 0,
+      groupReps: [],
       setDone: [],
     }));
   },
@@ -108,7 +123,8 @@ const FTStore = {
   // 把指定组的完成状态设为 value（内部助手）
   _setSetDone(state, dateStr, exId, setIndex, value) {
     return this.updateExercise(state, dateStr, exId, (ex) => {
-      if (!ex.sets || ex.setDone.length !== ex.sets || setIndex >= ex.sets) return ex;
+      const n = ex.groupReps.length;
+      if (!n || ex.setDone.length !== n || setIndex >= n) return ex;
       // 顺序约束：只能勾选“第一个未完成组”，或取消“最后一个已完成组”
       let prefix = 0;
       while (ex.setDone[prefix]) prefix++;
@@ -116,7 +132,7 @@ const FTStore = {
       if (!value && setIndex !== prefix - 1) return ex; // 只能从最后一组往前取消
       const setDone = [...ex.setDone];
       setDone[setIndex] = value;
-      const completed = setDone.filter(Boolean).length * ex.reps;
+      const completed = ex.groupReps.reduce((sum, r, i) => (setDone[i] ? sum + r : sum), 0);
       return { ...ex, setDone, completed };
     });
   },
@@ -130,10 +146,10 @@ const FTStore = {
   },
 
   // —— 批量操作（作用于当天全部 5 个项目）——
-  // 一键给 5 个项目应用同一分组方案
-  applyGroupsAll(state, dateStr, sets, reps) {
+  // 一键给 5 个项目应用同一分组方案（groupReps 为每组数量数组）
+  applyGroupsAll(state, dateStr, groupReps) {
     let s = state;
-    for (const ex of FT_EXERCISES) s = this.applyGroups(s, dateStr, ex.id, sets, reps);
+    for (const ex of FT_EXERCISES) s = this.applyGroups(s, dateStr, ex.id, groupReps);
     return s;
   },
   // 清除 5 个项目的分组配置（保留各自已完成个数）
