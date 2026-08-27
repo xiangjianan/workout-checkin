@@ -89,9 +89,12 @@ const FTLogic = {
     const rem = total % sets;
     return Array.from({ length: sets }, (_, i) => (i < rem ? base + 1 : base));
   },
-  // 自定义分组草稿预览：values 为前 n-1 组的原始输入（字符串），
+  // 自定义分组草稿预览：target 须为整数，values 为前 n-1 组的原始输入（字符串），
   // 返回 { ok, last（尾组=目标-前面组之和）, sum, error }
   customGroupsPreview(target, values) {
+    if (!Number.isInteger(target)) {
+      return { ok: false, last: null, sum: null, error: '目标数量非法' };
+    }
     const nums = values.map((v) => {
       const n = Number(String(v).trim());
       return Number.isInteger(n) ? n : NaN;
