@@ -241,3 +241,33 @@ test('renderBatchSection:摘要均匀显示每组 N,非均匀超过 6 组截断'
   const uniform = FTUI.renderBatchSection(recWithGroups([25, 25, 25, 25], [false, false, false, false]), targetsAll(100));
   assert.match(uniform, /当前 4 组 每组 25/);
 });
+
+// ---- UI:自定义分组面板 ----
+
+test('面板:有效草稿显示每组输入、尾组补差与可点的应用按钮', () => {
+  const { FTUI } = loadFT();
+  const draft = { target: 100, count: 3, values: ['34', '33'] };
+  const html = FTUI.renderBatchSection(null, targetsAll(100), true, draft);
+  assert.match(html, /✏️ 自定义/);
+  assert.match(html, /value="34"/);
+  assert.match(html, /\+33/);          // 尾组自动补差
+  assert.match(html, /合计 100 \/ 100 ✓/);
+  assert.doesNotMatch(html, /apply-groups-custom" disabled/);
+});
+
+test('面板:前面组之和过大时应用按钮禁用并显示错误', () => {
+  const { FTUI } = loadFT();
+  const draft = { target: 100, count: 3, values: ['60', '50'] };
+  const html = FTUI.renderBatchSection(null, targetsAll(100), true, draft);
+  assert.match(html, /apply-groups-custom" disabled/);
+  assert.match(html, /cg-sum err/);
+  assert.match(html, /过大/);
+});
+
+test('面板:默认关闭时不渲染面板,但 ✏️ 按钮仍在', () => {
+  const { FTUI } = loadFT();
+  const html = FTUI.renderBatchSection(null, targetsAll(100));
+  // 注意断言面板容器而非裸 'custom-groups'：chip 的 data-action="toggle-custom-groups" 含该子串
+  assert.ok(!html.includes('class="custom-groups"'), '面板不应出现');
+  assert.match(html, /✏️ 自定义/);
+});

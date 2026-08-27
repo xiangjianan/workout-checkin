@@ -129,7 +129,7 @@ const FTUI = {
     return { title: `${cn} · 第 ${wi} 次训练`, sub: '完成全部 5 个项目即打卡成功（+¥200）' };
   },
 
-  renderCheckinBody(state, dateStr, advancedOpen) {
+  renderCheckinBody(state, dateStr, advancedOpen, customOpen = false, draft = null) {
     const wi = FTLogic.workoutIndexForDate(state.startDate, dateStr);
     if (wi === null) {
       return `<p class="muted rest-note">这一天不是训练日，安心休息 💤</p>`;
@@ -141,7 +141,7 @@ const FTUI = {
     const perEx = targets[FT_EXERCISES[0].id];
     const total = FT_EXERCISES.reduce((sum, ex) => sum + (targets[ex.id] || 0), 0);
     const rows = FT_EXERCISES.map((ex) => this.renderExerciseCard(ex, targets[ex.id], rec)).join('');
-    const batch = this.renderBatchSection(rec, targets);
+    const batch = this.renderBatchSection(rec, targets, customOpen, draft);
 
     // 一键完成当天全部，置于分组区之下（已完成时降级为不可点的状态提示）
     const quickBtn = dayDone
@@ -171,7 +171,7 @@ const FTUI = {
   },
 
   // 批量分组区：选择分组方案（一键应用于 5 项）+ 逐组完成（5 项同步）
-  renderBatchSection(record, targets) {
+  renderBatchSection(record, targets, customOpen = false, draft = null) {
     const sharedTarget = targets[FT_EXERCISES[0].id];
     const allSame = FT_EXERCISES.every((ex) => targets[ex.id] === sharedTarget);
     if (!allSame) return ''; // 各项目标不一致时不提供批量分组
@@ -195,6 +195,13 @@ const FTUI = {
               data-action="apply-groups-all" data-sets="${o.sets}" data-reps="${o.reps}">
         ${o.sets}组 ×${o.reps}
       </button>`).join('');
+    const customChip = `
+      <button class="chip custom ${customOpen ? 'on' : ''}" data-action="toggle-custom-groups">✏️ 自定义</button>`;
+
+    // 自定义分组面板：customOpen 时展开（草稿缺省则按 2 组均分初始化）
+    const customPanel = customOpen
+      ? this.renderCustomGroupsPanel(sharedTarget, draft || { target: sharedTarget, count: 2, values: [] })
+      : '';
 
     // 逐组完成按钮：点「第N组」一次性标记 5 个项目的第 N 组
     // 顺序约束：前面的组没完成时，后面的组锁定不可点
@@ -236,12 +243,46 @@ const FTUI = {
       <div class="batch-section">
         <div class="batch-row">
           <span class="batch-title">分组方案 <small>每项目标 ${sharedTarget} 个 · 一键应用于全部 5 项${summary}</small></span>
-          <div class="chips">${chips}</div>
+          <div class="chips">${chips}${customChip}</div>
           ${curSets > 0 ? '<button class="btn btn-mini" data-action="clear-groups-all">清除分组</button>' : ''}
         </div>
+        ${customPanel}
         ${batchSets}
       </div>
     `;
+  },
+
+  // 自定义分组面板：组数自动均分 → 前 n-1 组可调 → 最后一组自动补差（只读）
+  renderCustomGroupsPanel(target, draft) {
+    const groups = FTLogic.splitEvenly(target, draft.count) || FTLogic.splitEvenly(target, 2);
+    const count = groups.length;
+    // 草稿长度与组数不匹配时（如刚改完组数），回退为均分默认值
+    const values = draft.values.length === count - 1 ? draft.values : groups.slice(0, -1).map(String);
+    const pv = FTLogic.customGroupsPreview(target, values);
+    const inputs = values.map((v, i) => `
+      <label class="cg-item"><span>第${i + 1}组</span>
+        <input class="cg-rep" data-idx="${i}" type="number" inputmode="numeric" min="1" value="${v}">
+      </label>`).join('');
+    const tailVal = pv.last === null ? '—' : `+${pv.last}`;
+    const sumLine = pv.ok
+      ? `合计 ${target} / ${target} ✓`
+      : `合计 ${pv.sum === null ? '?' : pv.sum} / ${target} · ${pv.error}`;
+    return `
+      <div class="custom-groups">
+        <div class="cg-row">
+          <label class="cg-item"><span>组数</span>
+            <input class="cg-count" type="number" inputmode="numeric" min="2" max="${target}" value="${count}">
+          </label>
+          <span class="cg-hint">改组数自动重新均分 · 最后一组自动补差</span>
+        </div>
+        <div class="cg-groups">${inputs}
+          <label class="cg-item tail"><span>第${count}组</span>
+            <input class="cg-rep tail" readonly tabindex="-1" value="${tailVal}">
+          </label>
+        </div>
+        <div class="cg-sum ${pv.ok ? '' : 'err'}">${sumLine}</div>
+        <button class="btn btn-mini primary" data-action="apply-groups-custom"${pv.ok ? '' : ' disabled'}>应用分组</button>
+      </div>`;
   },
 
   renderExerciseCard(ex, target, record) {
