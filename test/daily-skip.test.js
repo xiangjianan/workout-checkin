@@ -416,7 +416,28 @@ test('DailyUI：日历跳过日显示 🩡、skipped 样式、无序号徽标；
   assert.ok(cell.includes('🩡'));
   assert.ok(!cell.includes('badge')); // 跳过日无 #N 徽标
   const next = cellOf(html, '2026-06-16');
-  assert.ok(next.includes('#2'));     // 后一天顺延为第 2 个生效日
+  assert.ok(next.includes('#2</span>')); // 后一天顺延为第 2 个生效日（带 </span> 防 #20 前缀误命中）
+});
+
+test('DailyUI：未打卡日 canSkip 允许时跳过按钮无禁用标记', () => {
+  const { DailyUI } = load();
+  const state = { startDate: '2026-06-14', records: {} };
+  const html = DailyUI.renderCheckinBody(state, TODAY); // 今天（第 2 天）未打卡，无跳过记录 → 允许
+  assert.ok(!html.includes('is-blocked'));
+  assert.ok(!html.includes('aria-disabled'));
+});
+
+test('DailyUI：canSkip 不允许时跳过按钮带 is-blocked/aria-disabled/title', () => {
+  const ft = load();
+  const { DailyUI } = ft;
+  const start = '2026-06-01';
+  const records = {};
+  for (let i = 8; i <= 13; i++) records[dateOff(ft, start, i)] = { type: 'skip' }; // 06-09..06-14 连跳 6
+  const state = { startDate: start, records };
+  const html = DailyUI.renderCheckinBody(state, TODAY); // 06-15 后向 6 连跳 + 自身 = 7 → 禁止
+  assert.ok(html.includes('skip-btn is-blocked'));
+  assert.ok(html.includes('aria-disabled="true"'));
+  assert.ok(html.includes('title="连续跳过不能超过 6 天"'));
 });
 
 test('DailyUI：统计副行显示已跳过天数', () => {

@@ -496,3 +496,31 @@ a.switch-card:hover, a.switch-card:active { border-color: var(--primary); backgr
 .cg-hint { font-size: 11px; color: var(--muted); }
 .cg-sum { font-size: 12px; color: var(--muted); }
 .cg-sum.err { color: var(--danger); font-weight: 600; }
+
+/* 跳过相关：弹窗跳过按钮 / 取消跳过 / 已跳过状态 / 日历跳过格 */
+.skip-btn {
+  font: inherit; font-size: 13px; cursor: pointer; touch-action: manipulation;
+  width: 100%; margin-top: 10px; padding: 10px 14px;
+  border: 1px dashed var(--border); border-radius: 12px;
+  background: var(--surface); color: var(--muted);
+  transition: background .15s, color .15s;
+}
+.skip-btn:hover { background: var(--surface-2); color: var(--text); }
+/* 连跳达上限：仅视觉置灰，仍可点击（app 层 alert 解释原因） */
+.skip-btn.is-blocked { opacity: .55; }
+.skip-cancel {
+  font: inherit; font-size: 13px; cursor: pointer; touch-action: manipulation;
+  display: block; margin: 10px auto 0; padding: 8px 14px;
+  border: 1px solid var(--border); border-radius: 99px;
+  background: var(--surface); color: var(--muted);
+}
+.skip-cancel:hover { background: var(--surface-2); color: var(--text); }
+.day-status.is-skipped { color: #ea580c; background: #fff7ed; border-color: #fed7aa; font-weight: 600; }
+.day-status.is-skipped .muted { font-weight: 400; }
+.cell.workout.skipped { background: #fff7ed; border-color: #fed7aa; }
+.cell.workout.skipped .mark { color: #ea580c; }
+@media (prefers-color-scheme: dark) {
+  .day-status.is-skipped { background: rgba(249, 115, 22, .15); border-color: rgba(249, 115, 22, .4); }
+  .cell.workout.skipped { background: rgba(249, 115, 22, .15); border-color: rgba(249, 115, 22, .4); }
+  .skip-btn, .skip-cancel { background: var(--surface-2); }
+}

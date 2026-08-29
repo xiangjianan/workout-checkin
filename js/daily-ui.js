@@ -99,6 +99,7 @@ const DailyUI = {
 
   renderCalendar(state, year, month /* 0-based */, selectedDate) {
     const today = DailyLogic.todayStr();
+    const records = state.records || {}; // 与逻辑层同口径：无 records 键的 state 也是合法输入
     // 一次推导整月共用（跳过日不占名额，序号随跳过顺延）
     const sched = DailyLogic.buildSchedule(state);
     const first = new Date(year, month, 1);
@@ -115,7 +116,7 @@ const DailyUI = {
       const isSelected = dateStr === selectedDate;
 
       if (day) {
-        const rec = state.records[dateStr];
+        const rec = records[dateStr];
         const done = day.kind === 'done';
         const status = done
           ? 'done'
@@ -161,16 +162,20 @@ const DailyUI = {
     if (!day) {
       return `<p class="muted rest-note">这一天不在 50 天计划内 💤</p>`;
     }
-    const rec = state.records[dateStr];
+    const records = state.records || {}; // 与逻辑层同口径：无 records 键的 state 也是合法输入
+    const rec = records[dateStr];
+
+    // 两个二选一大按钮（跳过覆盖 / 待打卡两分支共用，仅提示语随场景不同）
+    const choiceBtns = (hint) => DAILY_TYPES.map((t) => `
+      <button class="choice-btn" data-action="checkin" data-type="${t.id}">
+        <span class="ce">${t.emoji}</span>
+        <span class="cn">${t.name}打卡</span>
+        <span class="chint">${hint(t)}</span>
+      </button>`).join('');
 
     // 已跳过：覆盖打卡（返 ¥200、收回顺延）或取消跳过
     if (day.kind === 'skipped') {
-      const btns = DAILY_TYPES.map((t) => `
-        <button class="choice-btn" data-action="checkin" data-type="${t.id}">
-          <span class="ce">${t.emoji}</span>
-          <span class="cn">${t.name}打卡</span>
-          <span class="chint">身体恢复？打卡返 ¥200，日程收回顺延</span>
-        </button>`).join('');
+      const btns = choiceBtns(() => '身体恢复？打卡返 ¥200，日程收回顺延');
       return `
         <div class="day-status is-skipped">
           🩡 已跳过这天 ${rec.at ? `<span class="muted small">（${this.fmtTime(rec.at)}）</span>` : ''}
@@ -207,18 +212,16 @@ const DailyUI = {
     }
 
     // 未打卡（漏卡/待打卡）：两个大按钮二选一 + 特殊原因跳过
-    // canSkip 只管连跳上限——计划外/已打卡走不到这，靠上面的分支天然挡住
-    const btns = DAILY_TYPES.map((t) => `
-      <button class="choice-btn" data-action="checkin" data-type="${t.id}">
-        <span class="ce">${t.emoji}</span>
-        <span class="cn">${t.name}打卡</span>
-        <span class="chint">今天做了${t.name}？点这里</span>
-      </button>`).join('');
+    // canSkip 只管连跳上限——计划外/已打卡走不到这，靠上面的分支天然挡住；
+    // 连跳达上限时按钮仅视觉置灰 + aria 提示，点击仍走 app 层 alert 解释
+    const btns = choiceBtns((t) => `今天做了${t.name}？点这里`);
     const canSkip = DailyLogic.canSkip(state, dateStr);
+    const skipCls = canSkip ? 'skip-btn' : 'skip-btn is-blocked';
+    const skipAttrs = canSkip ? '' : ' aria-disabled="true" title="连续跳过不能超过 6 天"';
     return `
       <div class="day-status">健身 / 学习，今天完成哪样？</div>
       <div class="choice-grid">${btns}</div>
-      <button class="skip-btn" data-action="skip-day"${canSkip ? '' : ' title="连续跳过不能超过 6 天"'}>
+      <button class="${skipCls}" data-action="skip-day"${skipAttrs}>
         🩡 特殊原因跳过这天
       </button>
       <p class="muted small choice-note">打卡成功即返 ¥200；生理期等特殊原因可跳过——不断签、不返钱、日程顺延 1 天。</p>

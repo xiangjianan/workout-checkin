@@ -292,6 +292,23 @@ const DailyApp = {
       this.commit(DailyStore.cancelCheckin(this.state, dateStr));
       return;
     }
+    if (action === 'skip-day') {
+      // 防御：仅计划内未打卡日可跳过（canSkip 只管连跳上限，挡不住计划外/已打卡/已跳过的陈旧点击）
+      const day = DailyLogic.scheduleDayOf(this.state, dateStr);
+      if (!day || day.kind === 'done' || day.kind === 'skipped') return;
+      if (!DailyLogic.canSkip(this.state, dateStr)) {
+        alert('连续跳过不能超过 6 天，请先完成一次打卡。');
+        return;
+      }
+      if (!confirm('确定跳过这一天吗？不断签、不返 ¥200，后续日程顺延 1 天。')) return;
+      this.commit(DailyStore.skip(this.state, dateStr));
+      return;
+    }
+    if (action === 'cancel-skip') {
+      if (!confirm('确定取消跳过吗？这天恢复为待打卡，进度与日程会重新计算。')) return;
+      this.commit(DailyStore.cancelCheckin(this.state, dateStr));
+      return;
+    }
   },
 
   // ---- 设置弹窗 ----
