@@ -7,6 +7,9 @@ const { loadDaily } = require('./helpers/load');
 
 const TODAY = '2026-06-15';
 
+// 便捷构造：无跳过场景下的 state（日程推导对无 skip 记录的数据与旧固定日程完全一致）
+const plan = (startDate, records = {}) => ({ startDate, records });
+
 function load() {
   const ft = loadDaily();
   ft.DailyLogic.todayStr = () => TODAY;
@@ -27,15 +30,15 @@ test('DAILY_CONFIG：50 天 · 1 万对赌 · 每天 200', () => {
 test('日程：startDate 起连续 50 天每天都是打卡日，第 51 天与之前均非打卡日', () => {
   const { DailyLogic } = load();
   const start = '2026-06-13';
-  assert.equal(DailyLogic.checkinIndexForDate(start, '2026-06-13'), 1);
-  assert.equal(DailyLogic.checkinIndexForDate(start, '2026-06-14'), 2); // 无休息日，连着来
-  assert.equal(DailyLogic.checkinIndexForDate(start, '2026-06-15'), 3);
+  assert.equal(DailyLogic.checkinIndexForDate(plan(start), '2026-06-13'), 1);
+  assert.equal(DailyLogic.checkinIndexForDate(plan(start), '2026-06-14'), 2); // 无休息日，连着来
+  assert.equal(DailyLogic.checkinIndexForDate(plan(start), '2026-06-15'), 3);
   // 第 50 天 = 06-13 + 49 天 = 08-01
-  assert.equal(DailyLogic.checkinDate(start, 50), '2026-08-01');
-  assert.equal(DailyLogic.checkinIndexForDate(start, '2026-08-01'), 50);
-  assert.equal(DailyLogic.checkinIndexForDate(start, '2026-08-02'), null);
-  assert.equal(DailyLogic.checkinIndexForDate(start, '2026-06-12'), null);
-  assert.equal(DailyLogic.lastCheckinDate(start), '2026-08-01');
+  assert.equal(DailyLogic.checkinDate(plan(start), 50), '2026-08-01');
+  assert.equal(DailyLogic.checkinIndexForDate(plan(start), '2026-08-01'), 50);
+  assert.equal(DailyLogic.checkinIndexForDate(plan(start), '2026-08-02'), null);
+  assert.equal(DailyLogic.checkinIndexForDate(plan(start), '2026-06-12'), null);
+  assert.equal(DailyLogic.lastCheckinDate(plan(start)), '2026-08-01');
 });
 
 test('isCheckedIn：带合法类型的记录才算已打卡', () => {
@@ -73,7 +76,7 @@ test('computeStatus：今天未打卡不算断签', () => {
 test('computeStatus：打卡 1 天返 200，待返还 9800', () => {
   const { DailyLogic } = load();
   const start = '2026-06-14'; // day1=昨天（已打卡），day2=今天（待打卡）
-  const state = { startDate: start, records: { [DailyLogic.checkinDate(start, 1)]: { type: 'fitness' } } };
+  const state = { startDate: start, records: { [DailyLogic.checkinDate(plan(start), 1)]: { type: 'fitness' } } };
   const s = DailyLogic.computeStatus(state);
   assert.equal(s.completed, 1);
   assert.equal(s.returned, 200);
@@ -88,9 +91,9 @@ test('computeStatus：过去日漏卡即断签，剩余全损', () => {
   const start = '2026-06-10'; // day1..day5 已过，day6=今天
   // day1 健身、day2 学习、day4 健身；day3 漏卡（过去未打卡）→ 断签
   const records = {
-    [DailyLogic.checkinDate(start, 1)]: { type: 'fitness' },
-    [DailyLogic.checkinDate(start, 2)]: { type: 'study' },
-    [DailyLogic.checkinDate(start, 4)]: { type: 'fitness' },
+    [DailyLogic.checkinDate(plan(start), 1)]: { type: 'fitness' },
+    [DailyLogic.checkinDate(plan(start), 2)]: { type: 'study' },
+    [DailyLogic.checkinDate(plan(start), 4)]: { type: 'fitness' },
   };
   const s = DailyLogic.computeStatus({ startDate: start, records });
   assert.equal(s.broken, true);
@@ -109,7 +112,7 @@ test('computeStatus：漏卡日补卡后断签恢复', () => {
   const start = '2026-06-10'; // day1..day5 已过，day6=今天
   // 断签场景（day3 漏卡）补上 day3 与 day5 后，所有过去日均完成 → 恢复
   const records = {};
-  for (let i = 1; i <= 5; i++) records[DailyLogic.checkinDate(start, i)] = { type: i % 2 ? 'fitness' : 'study' };
+  for (let i = 1; i <= 5; i++) records[DailyLogic.checkinDate(plan(start), i)] = { type: i % 2 ? 'fitness' : 'study' };
   const s = DailyLogic.computeStatus({ startDate: start, records });
   assert.equal(s.broken, false);
   assert.equal(s.completed, 5);
@@ -124,7 +127,7 @@ test('computeStatus：50 天全部打卡 → 已完成，返满 1 万', () => {
   const { DailyLogic } = load();
   const start = TODAY; // 从今天开始，全部补满也不影响「全完成」判定
   const records = {};
-  for (let i = 1; i <= 50; i++) records[DailyLogic.checkinDate(start, i)] = { type: i % 2 ? 'fitness' : 'study' };
+  for (let i = 1; i <= 50; i++) records[DailyLogic.checkinDate(plan(start), i)] = { type: i % 2 ? 'fitness' : 'study' };
   const s = DailyLogic.computeStatus({ startDate: start, records });
   assert.equal(s.completed, 50);
   assert.equal(s.phase, 'done');
@@ -190,9 +193,9 @@ test('DailyStore：importJSON 校验非法输入', () => {
 test('DailyLogic：startDate 非法时日程判定返回 null 而非 NaN', () => {
   const { DailyLogic } = load();
   // 即使脏数据混进来（未经 importJSON 校验），日程判断也不能让 NaN 绕过边界
-  assert.equal(DailyLogic.checkinIndexForDate('2026/7/1', '2026-07-01'), null);
-  assert.equal(DailyLogic.checkinIndexForDate('abc', '2026-07-01'), null);
-  assert.equal(DailyLogic.checkinIndexForDate('', '2026-07-01'), null);
+  assert.equal(DailyLogic.checkinIndexForDate(plan('2026/7/1'), '2026-07-01'), null);
+  assert.equal(DailyLogic.checkinIndexForDate(plan('abc'), '2026-07-01'), null);
+  assert.equal(DailyLogic.checkinIndexForDate(plan(''), '2026-07-01'), null);
 });
 
 // ---- 渲染 ----
@@ -224,7 +227,7 @@ test('DailyUI：stats 展示类型统计与金额（进行中/断签）', () => 
   const start = '2026-06-11'; // day1..day4 已过且全部打卡，day5=今天 → 进行中
   // 进行中：4 天（健 2 / 学 2），待返还 9200
   const records = {};
-  for (let i = 1; i <= 4; i++) records[DailyLogic.checkinDate(start, i)] = { type: i % 2 ? 'fitness' : 'study' };
+  for (let i = 1; i <= 4; i++) records[DailyLogic.checkinDate(plan(start), i)] = { type: i % 2 ? 'fitness' : 'study' };
   const ongoing = DailyUI.renderStats({ startDate: start, records });
   assert.ok(ongoing.includes('💪 健身'));
   assert.ok(ongoing.includes('📚 学习'));
@@ -237,9 +240,9 @@ test('DailyUI：stats 展示类型统计与金额（进行中/断签）', () => 
   const broken = DailyUI.renderStats({
     startDate: start,
     records: {
-      [DailyLogic.checkinDate(start, 1)]: { type: 'fitness' },
-      [DailyLogic.checkinDate(start, 2)]: { type: 'study' },
-      [DailyLogic.checkinDate(start, 4)]: { type: 'fitness' },
+      [DailyLogic.checkinDate(plan(start), 1)]: { type: 'fitness' },
+      [DailyLogic.checkinDate(plan(start), 2)]: { type: 'study' },
+      [DailyLogic.checkinDate(plan(start), 4)]: { type: 'fitness' },
     },
   });
   assert.ok(broken.includes('已损失'));
@@ -252,7 +255,7 @@ test('DailyUI：日历已打卡日显示类型 emoji，错过显示 ✗', () => 
   const state = {
     startDate: start,
     records: {
-      [DailyLogic.checkinDate(start, 1)]: { type: 'study' },  // 昨天：已打卡
+      [DailyLogic.checkinDate(plan(start), 1)]: { type: 'study' },  // 昨天：已打卡
       [TODAY]: { type: 'fitness', at: '2026-06-15T08:00:00.000Z' }, // 今天：已打卡
     },
   };
@@ -285,7 +288,7 @@ test('DailyUI：庆祝统计展示进度与剩余待返还', () => {
   const { DailyLogic, DailyUI } = load();
   const start = '2026-06-11'; // day1..day4 已过且全部打卡，day5=今天 → 进行中
   const records = {};
-  for (let i = 1; i <= 4; i++) records[DailyLogic.checkinDate(start, i)] = { type: 'fitness' };
+  for (let i = 1; i <= 4; i++) records[DailyLogic.checkinDate(plan(start), i)] = { type: 'fitness' };
   const html = DailyUI.renderCelebrationStats({ startDate: start, records });
   assert.match(html, /已完成 4 \/ 50 天/);
   assert.ok(html.includes(DailyUI.fmtMoney(9200)));

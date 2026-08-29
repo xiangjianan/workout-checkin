@@ -103,3 +103,47 @@ test('buildSchedule：startDate 非法时返回空日程而非报错', () => {
   assert.deepEqual([...sched.days], []);
   assert.equal(sched.lastDate, null);
 });
+
+test('buildSchedule：合法最坏情形（每个生效日前连跳 6 天）不触发截断', () => {
+  const ft = load();
+  const { DailyLogic } = ft;
+  const start = '2020-01-01';
+  const records = {};
+  let off = 0;
+  for (let i = 0; i < 50; i++) {
+    for (let k = 0; k < 6; k++) records[dateOff(ft, start, off++)] = { type: 'skip' };
+    records[dateOff(ft, start, off++)] = { type: 'fitness' };
+  }
+  const sched = DailyLogic.buildSchedule({ startDate: start, records });
+  assert.equal(sched.days.length, 350); // 50×7 恰好用满名额，不截断
+  assert.equal(sched.lastDate, dateOff(ft, start, 349));
+});
+
+// ---- 日程 API（签名改为 state） ----
+
+test('日程 API：checkinIndexForDate / checkinDate / lastCheckinDate 吃 state，随跳过顺延', () => {
+  const { DailyLogic } = load();
+  const state = {
+    startDate: '2026-06-13',
+    records: {
+      '2026-06-13': { type: 'fitness' },
+      '2026-06-14': { type: 'skip' },
+    },
+  };
+  assert.equal(DailyLogic.scheduleDayOf(state, '2026-06-14').kind, 'skipped');
+  assert.equal(DailyLogic.checkinIndexForDate(state, '2026-06-14'), null); // 跳过日无序号
+  assert.equal(DailyLogic.checkinIndexForDate(state, '2026-06-15'), 2);    // 顺延后的第 2 生效日
+  assert.equal(DailyLogic.checkinDate(state, 2), '2026-06-15');
+  assert.equal(DailyLogic.lastCheckinDate(state), '2026-08-02');
+  assert.equal(DailyLogic.scheduleDayOf(state, '2026-06-12'), null);       // 计划外
+  assert.equal(DailyLogic.checkinIndexForDate(state, '2026-06-12'), null);
+});
+
+test('日程 API：startDate 非法时返回 null 而非 NaN', () => {
+  const { DailyLogic } = load();
+  assert.equal(DailyLogic.checkinIndexForDate({ startDate: '2026/7/1', records: {} }, '2026-07-01'), null);
+  assert.equal(DailyLogic.checkinIndexForDate({ startDate: 'abc', records: {} }, '2026-07-01'), null);
+  assert.equal(DailyLogic.checkinIndexForDate({ startDate: '', records: {} }, '2026-07-01'), null);
+  assert.equal(DailyLogic.lastCheckinDate({ startDate: '2026/7/1', records: {} }), null);
+  assert.equal(DailyLogic.checkinDate({ startDate: '', records: {} }, 1), null);
+});

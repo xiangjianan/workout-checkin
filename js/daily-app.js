@@ -65,7 +65,7 @@ const DailyApp = {
   maybeCelebrate(prev, next) {
     const dateStr = this.selectedDate;
     if (!dateStr) return;
-    if (DailyLogic.checkinIndexForDate(next.startDate, dateStr) === null) return;
+    if (DailyLogic.scheduleDayOf(next, dateStr) === null) return;
     const wasDone = DailyLogic.isCheckedIn(prev && prev.records[dateStr]);
     const isDone = DailyLogic.isCheckedIn(next.records[dateStr]);
     if (!wasDone && isDone) this.showCelebration(dateStr);
@@ -170,7 +170,7 @@ const DailyApp = {
     this.view = { year: now.getFullYear(), month: now.getMonth() };
     this.rerender();
     const today = DailyLogic.todayStr();
-    if (DailyLogic.checkinIndexForDate(this.state.startDate, today) !== null) {
+    if (DailyLogic.scheduleDayOf(this.state, today) !== null) {
       this.openCheckin(today);
     }
   },
@@ -214,7 +214,7 @@ const DailyApp = {
       if (!cell || cell.classList.contains('empty')) return;
       const dateStr = cell.dataset.date;
       if (!dateStr) return;
-      if (DailyLogic.checkinIndexForDate(this.state.startDate, dateStr) !== null) {
+      if (DailyLogic.scheduleDayOf(this.state, dateStr) !== null) {
         this.openCheckin(dateStr);
       }
     });
@@ -277,7 +277,7 @@ const DailyApp = {
     if (!btn) return;
     const dateStr = this.selectedDate;
     const action = btn.dataset.action;
-    if (DailyLogic.checkinIndexForDate(this.state.startDate, dateStr) === null) return;
+    if (DailyLogic.scheduleDayOf(this.state, dateStr) === null) return;
 
     if (action === 'replay-celebrate') {
       this.showCelebration(dateStr);

@@ -106,7 +106,7 @@ const DailyUI = {
 
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = DailyLogic.toDateStr(new Date(year, month, d));
-      const di = DailyLogic.checkinIndexForDate(state.startDate, dateStr);
+      const di = DailyLogic.checkinIndexForDate(state, dateStr);
       const isToday = dateStr === today;
       const isSelected = dateStr === selectedDate;
 
@@ -136,7 +136,7 @@ const DailyUI = {
   },
 
   renderCheckinTitle(state, dateStr) {
-    const di = DailyLogic.checkinIndexForDate(state.startDate, dateStr);
+    const di = DailyLogic.checkinIndexForDate(state, dateStr);
     const d = DailyLogic.parseDate(dateStr);
     const cn = `${d.getMonth() + 1} 月 ${d.getDate()} 日`;
     if (di === null) return { title: cn, sub: '计划外日期' };
@@ -144,7 +144,7 @@ const DailyUI = {
   },
 
   renderCheckinBody(state, dateStr) {
-    const di = DailyLogic.checkinIndexForDate(state.startDate, dateStr);
+    const di = DailyLogic.checkinIndexForDate(state, dateStr);
     if (di === null) {
       return `<p class="muted rest-note">这一天不在 50 天计划内 💤</p>`;
     }

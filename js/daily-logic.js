@@ -62,8 +62,9 @@ const DailyLogic = {
 
     const total = DAILY_CONFIG.totalDays;
     // 防脏数据死循环：合法数据两个生效日之间至多连跳 6 天，日程长度 ≤ 50×7
+    // 触发上限时返回截断的部分日程（lastDate 并非真正的第 50 个名额日），仅脏数据会走到
     const maxWalk = total * (DAILY_CONFIG.maxConsecutiveSkips + 1);
-    let used = 0; // 已占用的生效名额（done + missed）
+    let used = 0; // 生效名额消耗（done/missed/pending 各占 1，跳过不占）
     let cursor = this.parseDate(state.startDate);
     let lastDate = null;
 
@@ -97,19 +98,20 @@ const DailyLogic = {
     return this.buildSchedule(state).byDate[dateStr] || null;
   },
 
-  // ---- 计划日程 ----
-  // 某日期对应第几个打卡日（1-based）；null 表示计划外日期（含 startDate 非法的情况）
-  checkinIndexForDate(startDate, dateStr) {
-    const diff = this.diffDays(dateStr, startDate);
-    if (!Number.isFinite(diff) || diff < 0 || diff >= DAILY_CONFIG.totalDays) return null;
-    return diff + 1;
+  // ---- 计划日程（基于推导；日程随跳过记录顺延，因此签名吃 state） ----
+  // 某日期对应第几个生效打卡日（1-based）；null 表示跳过日或计划外。
+  // 判断「是否在计划内」请用 scheduleDayOf（跳过日在计划内但无序号）。
+  checkinIndexForDate(state, dateStr) {
+    const day = this.scheduleDayOf(state, dateStr);
+    return day ? day.index : null;
   },
-  // 第 i 个打卡日对应的日期
-  checkinDate(startDate, i) {
-    return this.toDateStr(this.addDays(this.parseDate(startDate), i - 1));
+  // 第 i 个生效打卡日对应的日期；i 超出 50 或 startDate 非法返回 null
+  checkinDate(state, i) {
+    const day = this.buildSchedule(state).days.find((d) => d.index === i);
+    return day ? day.date : null;
   },
-  lastCheckinDate(startDate) {
-    return this.checkinDate(startDate, DAILY_CONFIG.totalDays);
+  lastCheckinDate(state) {
+    return this.buildSchedule(state).lastDate;
   },
 
   // ---- 打卡判定 ----
@@ -139,7 +141,8 @@ const DailyLogic = {
     for (const t of DAILY_TYPES) typeCounts[t.id] = 0;
 
     for (let i = 1; i <= DAILY_CONFIG.totalDays; i++) {
-      const dstr = this.checkinDate(state.startDate, i);
+      // 临时补丁：computeStatus 仍按固定日程取日（Task 3 将整体改为基于推导）
+      const dstr = this.toDateStr(this.addDays(this.parseDate(state.startDate), i - 1));
       const rec = records[dstr];
       const done = this.isCheckedIn(rec);
       const isPast = this.diffDays(dstr, today) < 0; // 严格小于今天才算过期
