@@ -262,7 +262,7 @@ test('computeStatus：脏数据防御——空日程/超长截断不得误报已
   const skipRecords = {};
   for (let i = 0; i < 400; i++) skipRecords[dateOff(ft, '2026-01-01', i)] = { type: 'skip' };
   const truncated = DailyLogic.computeStatus({ startDate: '2026-01-01', records: skipRecords });
-  assert.notEqual(truncated.phase, 'done');
+  assert.equal(truncated.phase, 'ongoing'); // 全 skip 截断后 completed=0，不得误报 done
 });
 
 // ---- 连跳上限 ----
@@ -337,4 +337,97 @@ test('DailyStore.skip：写入 skip 记录且不可变；打卡可覆盖，cance
   const s4 = DailyStore.cancelCheckin(s3, '2026-06-15');      // 取消跳过 = 删除该日记录
   assert.equal('2026-06-15' in s4.records, false);
   assert.equal(DailyLogic.isSkipped(s3.records['2026-06-15']), true);
+});
+
+test('canSkip：state 无 records 键时不炸，视为无跳过记录', () => {
+  const { DailyLogic } = load();
+  assert.equal(DailyLogic.canSkip({ startDate: '2026-06-01' }, '2026-06-02'), true);
+});
+
+test('DailyStore.skip：保留同日之外的既有记录', () => {
+  const { DailyStore } = load();
+  const s0 = { startDate: '2026-06-01', records: { '2026-06-01': { type: 'fitness' } } };
+  const s1 = DailyStore.skip(s0, '2026-06-02');
+  assert.equal(s1.records['2026-06-01'].type, 'fitness');
+});
+
+test('canSkip：前后两段跳过加自身恰好 6 天，允许', () => {
+  const { DailyLogic } = load();
+  const state = {
+    startDate: '2026-06-01',
+    records: {
+      '2026-06-03': { type: 'skip' }, // 后向 2 天：06-03、06-04
+      '2026-06-04': { type: 'skip' },
+      '2026-06-06': { type: 'skip' }, // 前向 3 天：06-06、06-07、06-08
+      '2026-06-07': { type: 'skip' },
+      '2026-06-08': { type: 'skip' },
+    },
+  };
+  // 06-05：后向 06-04、06-03（2）+ 自身（1）+ 前向 06-06..06-08（3）= 6，恰好达上限
+  assert.equal(DailyLogic.canSkip(state, '2026-06-05'), true);
+  // 06-06：后向 06-05 无记录即断链，06-03/06-04 那段不并入；1 + 前向 2 = 3
+  assert.equal(DailyLogic.canSkip(state, '2026-06-06'), true);
+});
+
+// ---- 渲染 ----
+
+test('DailyUI：未打卡日弹窗含跳过按钮与顺延说明', () => {
+  const { DailyUI } = load();
+  const state = { startDate: '2026-06-14', records: {} };
+  const html = DailyUI.renderCheckinBody(state, TODAY); // 今天（第 2 天）未打卡
+  assert.match(html, /data-action="skip-day"/);
+  assert.ok(html.includes('特殊原因跳过这天'));
+  assert.ok(html.includes('顺延 1 天'));
+});
+
+test('DailyUI：已跳过日弹窗展示状态 + 覆盖打卡 + 取消跳过', () => {
+  const { DailyUI } = load();
+  const state = {
+    startDate: '2026-06-14',
+    records: { [TODAY]: { type: 'skip', at: '2026-06-15T08:00:00.000Z' } },
+  };
+  const html = DailyUI.renderCheckinBody(state, TODAY);
+  assert.ok(html.includes('已跳过'));
+  assert.match(html, /data-action="cancel-skip"/);
+  assert.match(html, /data-action="checkin" data-type="fitness"/);
+  assert.match(html, /data-action="checkin" data-type="study"/);
+});
+
+test('DailyUI：跳过日标题与副行', () => {
+  const { DailyUI } = load();
+  const state = { startDate: '2026-06-14', records: { [TODAY]: { type: 'skip' } } };
+  const { title, sub } = DailyUI.renderCheckinTitle(state, TODAY);
+  assert.ok(title.includes('跳过日'));
+  assert.ok(sub.includes('不断签'));
+});
+
+test('DailyUI：日历跳过日显示 🩡、skipped 样式、无序号徽标；后一天序号顺延', () => {
+  const { DailyUI } = load();
+  const state = {
+    startDate: '2026-06-14',
+    records: {
+      '2026-06-14': { type: 'fitness' },
+      [TODAY]: { type: 'skip' },
+    },
+  };
+  const html = DailyUI.renderCalendar(state, 2026, 5, TODAY); // 6 月（0-based 5）
+  const cell = cellOf(html, TODAY);
+  assert.ok(cell.includes('skipped'));
+  assert.ok(cell.includes('🩡'));
+  assert.ok(!cell.includes('badge')); // 跳过日无 #N 徽标
+  const next = cellOf(html, '2026-06-16');
+  assert.ok(next.includes('#2'));     // 后一天顺延为第 2 个生效日
+});
+
+test('DailyUI：统计副行显示已跳过天数', () => {
+  const { DailyUI } = load();
+  const state = {
+    startDate: '2026-06-13',
+    records: {
+      '2026-06-13': { type: 'fitness' },
+      '2026-06-14': { type: 'skip' },
+    },
+  };
+  const html = DailyUI.renderStats(state);
+  assert.ok(html.includes('已跳过 1 天'));
 });
