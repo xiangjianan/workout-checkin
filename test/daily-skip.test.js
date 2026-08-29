@@ -137,6 +137,7 @@ test('日程 API：checkinIndexForDate / checkinDate / lastCheckinDate 吃 state
   assert.equal(DailyLogic.lastCheckinDate(state), '2026-08-02');
   assert.equal(DailyLogic.scheduleDayOf(state, '2026-06-12'), null);       // 计划外
   assert.equal(DailyLogic.checkinIndexForDate(state, '2026-06-12'), null);
+  assert.equal(DailyLogic.checkinDate(state, 51), null); // 越界序号返回 null
 });
 
 test('日程 API：startDate 非法时返回 null 而非 NaN', () => {
@@ -146,4 +147,94 @@ test('日程 API：startDate 非法时返回 null 而非 NaN', () => {
   assert.equal(DailyLogic.checkinIndexForDate({ startDate: '', records: {} }, '2026-07-01'), null);
   assert.equal(DailyLogic.lastCheckinDate({ startDate: '2026/7/1', records: {} }), null);
   assert.equal(DailyLogic.checkinDate({ startDate: '', records: {} }, 1), null);
+});
+
+// ---- 金额与断签 ----
+
+test('computeStatus：跳过日不返钱不断签，skippedCount 计入', () => {
+  const { DailyLogic } = load();
+  const state = {
+    startDate: '2026-06-13', // day1=昨天 day2=今天
+    records: {
+      '2026-06-13': { type: 'fitness' },
+      '2026-06-14': { type: 'skip' },
+    },
+  };
+  const s = DailyLogic.computeStatus(state);
+  assert.equal(s.completed, 1);
+  assert.equal(s.skippedCount, 1);
+  assert.equal(s.broken, false);
+  assert.equal(s.phase, 'ongoing');
+  assert.equal(s.returned, 200);     // 只有 1 天实际打卡
+  assert.equal(s.recoverable, 9800); // 仍按 50 个实际打卡日计算
+  assert.equal(s.remainingDays, 49);
+});
+
+test('computeStatus：跳过日夹在打卡中间不产生断签缺口', () => {
+  const { DailyLogic } = load();
+  const state = {
+    startDate: '2026-06-11', // 06-11..06-14 已过，06-15 今天
+    records: {
+      '2026-06-11': { type: 'fitness' },
+      '2026-06-12': { type: 'skip' },
+      '2026-06-13': { type: 'study' },
+      '2026-06-14': { type: 'skip' },
+    },
+  };
+  const s = DailyLogic.computeStatus(state);
+  assert.equal(s.broken, false);
+  assert.equal(s.completed, 2);
+  assert.equal(s.skippedCount, 2);
+  assert.equal(s.returned, 400);
+  assert.equal(s.recoverable, 9600); // (50-2)*200：跳过不占名额，仍可返满 1 万
+});
+
+test('computeStatus：漏卡日断签金额按实际打卡数（跳过不计钱）', () => {
+  const { DailyLogic } = load();
+  const state = {
+    startDate: '2026-06-10', // 06-10..06-14 已过，06-15 今天
+    records: {
+      '2026-06-10': { type: 'fitness' },
+      '2026-06-11': { type: 'skip' },
+      // 2026-06-12 漏卡（过去无记录）→ 断签
+      '2026-06-13': { type: 'study' },
+    },
+  };
+  const s = DailyLogic.computeStatus(state);
+  assert.equal(s.broken, true);
+  assert.equal(s.firstMissed, 2); // 漏卡日是第 2 个生效日
+  assert.equal(s.returned, 200);  // 断签点前实际打卡 1 天（跳过不返钱）
+  assert.equal(s.lost, 9800);     // (50-1)*200：returned + lost = 1 万
+  assert.equal(s.phase, 'failed');
+});
+
+test('computeStatus：漏卡日补跳后断签恢复', () => {
+  const { DailyLogic } = load();
+  // 06-13 打卡、06-14 过去未处理 → 断签；把 06-14 改为跳过后恢复
+  const before = { startDate: '2026-06-13', records: { '2026-06-13': { type: 'fitness' } } };
+  assert.equal(DailyLogic.computeStatus(before).broken, true);
+  const after = {
+    startDate: '2026-06-13',
+    records: { '2026-06-13': { type: 'fitness' }, '2026-06-14': { type: 'skip' } },
+  };
+  const s = DailyLogic.computeStatus(after);
+  assert.equal(s.broken, false);
+  assert.equal(s.completed, 1);
+  assert.equal(s.skippedCount, 1);
+  assert.equal(s.phase, 'ongoing');
+});
+
+test('computeStatus：打卡覆盖跳过后金额与日程收回顺延', () => {
+  const { DailyLogic } = load();
+  const state1 = { startDate: '2026-06-13', records: { '2026-06-14': { type: 'skip' } } };
+  assert.equal(DailyLogic.lastCheckinDate(state1), '2026-08-02');
+  const state2 = {
+    ...state1,
+    records: { '2026-06-14': { type: 'study', at: '2026-06-14T08:00:00.000Z' } },
+  };
+  const s = DailyLogic.computeStatus(state2);
+  assert.equal(s.skippedCount, 0);
+  assert.equal(s.completed, 1);
+  assert.equal(s.returned, 0); // 06-13 漏卡在前 → 断签，断签点前无实际打卡
+  assert.equal(DailyLogic.lastCheckinDate(state2), '2026-08-01'); // 顺延收回
 });

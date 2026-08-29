@@ -98,7 +98,7 @@ const DailyLogic = {
     return this.buildSchedule(state).byDate[dateStr] || null;
   },
 
-  // ---- 计划日程（基于推导；日程随跳过记录顺延，因此签名吃 state） ----
+  // ---- 计划日程 API（消费推导结果；日程随跳过记录顺延，因此签名吃 state） ----
   // 某日期对应第几个生效打卡日（1-based）；null 表示跳过日或计划外。
   // 判断「是否在计划内」请用 scheduleDayOf（跳过日在计划内但无序号）。
   checkinIndexForDate(state, dateStr) {
@@ -131,35 +131,37 @@ const DailyLogic = {
   // ---- 全局状态：断签与对赌金额 ----
   // 规则与健身计划一致：从第 1 天起连续打卡；某个「已过期」的打卡日未完成即断签，
   // 断签点之后的金额全部损失（补上漏卡日即恢复）。
+  // 跳过日不返钱、不占 50 天名额，但保住连续不断签（后续日程自动顺延）。
   computeStatus(state) {
-    const today = this.todayStr();
     const records = state.records || {};
-    let completed = 0;
+    const total = DAILY_CONFIG.totalDays;
+    let completed = 0;      // 实际打卡天数（跳过不计）
+    let doneBeforeMiss = 0; // 第一个漏卡日之前的实际打卡数（= 可返金额基数）
     let firstMissed = null;
     let allDone = true;
+    let skippedCount = 0;
     const typeCounts = {};
     for (const t of DAILY_TYPES) typeCounts[t.id] = 0;
 
-    for (let i = 1; i <= DAILY_CONFIG.totalDays; i++) {
-      // 临时补丁：computeStatus 仍按固定日程取日（Task 3 将整体改为基于推导）
-      const dstr = this.toDateStr(this.addDays(this.parseDate(state.startDate), i - 1));
-      const rec = records[dstr];
-      const done = this.isCheckedIn(rec);
-      const isPast = this.diffDays(dstr, today) < 0; // 严格小于今天才算过期
-      if (done) {
+    for (const day of this.buildSchedule(state).days) {
+      if (day.kind === 'skipped') { skippedCount++; continue; }
+      if (day.kind === 'done') {
         completed++;
-        typeCounts[rec.type]++;
-      } else {
+        typeCounts[records[day.date].type]++;
+        if (firstMissed === null) doneBeforeMiss++;
+      } else if (day.kind === 'missed') {
         allDone = false;
+        if (firstMissed === null) firstMissed = day.index;
+      } else {
+        allDone = false; // pending：今天/未来待打卡
       }
-      if (isPast && !done && firstMissed === null) firstMissed = i;
     }
 
     const broken = firstMissed !== null;
-    const earned = broken ? firstMissed - 1 : completed; // 断签前连续完成数
+    const earned = broken ? doneBeforeMiss : completed; // 断签前实际打卡数（跳过不计钱）
     const returned = earned * DAILY_CONFIG.perDay;
-    const lost = broken ? (DAILY_CONFIG.totalDays - earned) * DAILY_CONFIG.perDay : 0;
-    const recoverable = broken ? 0 : (DAILY_CONFIG.totalDays - completed) * DAILY_CONFIG.perDay;
+    const lost = broken ? (total - earned) * DAILY_CONFIG.perDay : 0;
+    const recoverable = broken ? 0 : (total - completed) * DAILY_CONFIG.perDay;
 
     let phase = 'ongoing';
     if (allDone) phase = 'done';
@@ -167,7 +169,7 @@ const DailyLogic = {
 
     return {
       completed,
-      remainingDays: DAILY_CONFIG.totalDays - completed,
+      remainingDays: total - completed,
       firstMissed,
       broken,
       returned,
@@ -175,6 +177,7 @@ const DailyLogic = {
       recoverable,
       phase,
       typeCounts,
+      skippedCount,
       totalDays: DAILY_CONFIG.totalDays,
       deposit: DAILY_CONFIG.deposit,
     };
