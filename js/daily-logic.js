@@ -3,9 +3,10 @@
 
 // 全局计划参数：1 万对赌 ÷ 200/天 = 50 个连续打卡日（无休息日）
 const DAILY_CONFIG = {
-  totalDays: 50,  // 计划总天数
-  deposit: 10000, // 对赌总金额（元）
-  perDay: 200,    // 每天打卡返还金额（元）
+  totalDays: 50,          // 计划总天数（实际打卡名额；跳过不占名额）
+  deposit: 10000,         // 对赌总金额（元）
+  perDay: 200,            // 每天打卡返还金额（元）
+  maxConsecutiveSkips: 6, // 连续跳过上限（生理期等特殊原因），第 7 天禁止
 };
 
 // 每天打卡二选一：健身 or 学习
@@ -46,6 +47,56 @@ const DailyLogic = {
     return Math.round((this.parseDate(aStr) - this.parseDate(bStr)) / DAY_MS);
   },
 
+  // ---- 计划日程（推导） ----
+  // 从 startDate 起逐日历日推导：跳过日不占 50 个名额，后续打卡日自动顺延。
+  // 返回 { days, byDate, lastDate }：
+  //   days/byDate: 每个计划内日历日一项 { date, kind, index }
+  //     kind: 'done' 已打卡 | 'skipped' 已跳过 | 'missed' 过去漏卡 | 'pending' 今天/未来待打卡
+  //     index: 生效序号（1-based），done/missed/pending 有值；skipped 恒为 null
+  //   lastDate: 计划内最后一个日历日（第 50 个生效名额用尽那天）
+  buildSchedule(state) {
+    const days = [];
+    const byDate = {};
+    const records = (state && state.records) || {};
+    if (!this.isValidDateStr(state && state.startDate)) return { days, byDate, lastDate: null };
+
+    const total = DAILY_CONFIG.totalDays;
+    // 防脏数据死循环：合法数据两个生效日之间至多连跳 6 天，日程长度 ≤ 50×7
+    const maxWalk = total * (DAILY_CONFIG.maxConsecutiveSkips + 1);
+    let used = 0; // 已占用的生效名额（done + missed）
+    let cursor = this.parseDate(state.startDate);
+    let lastDate = null;
+
+    while (used < total && days.length < maxWalk) {
+      const dateStr = this.toDateStr(cursor);
+      const rec = records[dateStr];
+      let day;
+      if (this.isCheckedIn(rec)) {
+        used++;
+        day = { date: dateStr, kind: 'done', index: used };
+      } else if (this.isSkipped(rec)) {
+        day = { date: dateStr, kind: 'skipped', index: null };
+      } else if (this.diffDays(dateStr, this.todayStr()) < 0) {
+        used++; // 漏卡也占名额
+        day = { date: dateStr, kind: 'missed', index: used };
+      } else {
+        used++; // 今天/未来：占满剩余名额的待打卡日
+        day = { date: dateStr, kind: 'pending', index: used };
+      }
+      days.push(day);
+      byDate[dateStr] = day;
+      lastDate = dateStr;
+      cursor = this.addDays(cursor, 1);
+    }
+    return { days, byDate, lastDate };
+  },
+
+  // 取某日期的推导结果；计划外（含 startDate 非法）返回 null。
+  // 跳过日在计划内但 index 为 null——判断「是否在计划内」用这个，别用 checkinIndexForDate。
+  scheduleDayOf(state, dateStr) {
+    return this.buildSchedule(state).byDate[dateStr] || null;
+  },
+
   // ---- 计划日程 ----
   // 某日期对应第几个打卡日（1-based）；null 表示计划外日期（含 startDate 非法的情况）
   checkinIndexForDate(startDate, dateStr) {
@@ -65,6 +116,10 @@ const DailyLogic = {
   // 记录带合法类型才算已打卡
   isCheckedIn(record) {
     return !!(record && DAILY_TYPES.some((t) => t.id === record.type));
+  },
+  // 跳过日（生理期等特殊原因）：不打卡、不占 50 天名额、不断签、不返钱
+  isSkipped(record) {
+    return !!(record && record.type === 'skip');
   },
   // 取打卡类型对象（供 UI 显示名称 / emoji）
   typeOf(record) {
