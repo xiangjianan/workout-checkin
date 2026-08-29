@@ -305,7 +305,11 @@ const DailyApp = {
       return;
     }
     if (action === 'cancel-skip') {
-      if (!confirm('确定取消跳过吗？这天恢复为待打卡，进度与日程会重新计算。')) return;
+      const past = DailyLogic.diffDays(dateStr, DailyLogic.todayStr()) < 0;
+      const msg = past
+        ? '确定取消跳过吗？该日已过去，取消后将记为漏卡，若因此断签金额将无法返还。'
+        : '确定取消跳过吗？这天恢复为待打卡，进度与日程会重新计算。';
+      if (!confirm(msg)) return;
       this.commit(DailyStore.cancelCheckin(this.state, dateStr));
       return;
     }

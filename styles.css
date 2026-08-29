@@ -162,6 +162,7 @@ html, body { height: 100%; }
 .dot.done { background: #10b981; }
 .dot.pending { background: #f59e0b; }
 .dot.missed { background: #ef4444; }
+.dot.skipped { background: #ea580c; }
 .dot.future { background: #9ca3af; }
 .dot.rest { background: #d1d5db; }
 
@@ -436,7 +437,7 @@ a.switch-card:hover, a.switch-card:active { border-color: var(--primary); backgr
 /* === 无障碍：尊重系统的「减少动态效果」 === */
 @media (prefers-reduced-motion: reduce) {
   .modal-card, .celebration-card, .celebrate-emoji, .celebrate-money, .confetti { animation: none !important; }
-  .btn, .cell, .set-btn, .chip, .exercise-row, .advanced > summary, .switch-card { transition: none !important; }
+  .btn, .cell, .set-btn, .chip, .exercise-row, .advanced > summary, .switch-card, .skip-btn, .skip-cancel, .choice-btn { transition: none !important; }
 }
 
 /* === 每日打卡页（daily.html）：二选一打卡按钮 + 类型统计 === */
