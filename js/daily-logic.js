@@ -123,6 +123,24 @@ const DailyLogic = {
   isSkipped(record) {
     return !!(record && record.type === 'skip');
   },
+  // 连续跳过上限：若在 dateStr 跳过，合并其前后日历上紧邻的 skip 记录，
+  // 连续长度不得超过 maxConsecutiveSkips（6）——中间任何非 skip 日（打卡/漏卡/待打卡）即断链。
+  canSkip(state, dateStr) {
+    if (!this.isValidDateStr(dateStr)) return false;
+    const records = state.records || {};
+    let streak = 1; // dateStr 本身
+    let cursor = this.parseDate(dateStr);
+    for (let k = 0; k < DAILY_CONFIG.maxConsecutiveSkips; k++) {
+      cursor = this.addDays(cursor, -1);
+      if (this.isSkipped(records[this.toDateStr(cursor)])) streak++; else break;
+    }
+    cursor = this.parseDate(dateStr);
+    for (let k = 0; k < DAILY_CONFIG.maxConsecutiveSkips; k++) {
+      cursor = this.addDays(cursor, 1);
+      if (this.isSkipped(records[this.toDateStr(cursor)])) streak++; else break;
+    }
+    return streak <= DAILY_CONFIG.maxConsecutiveSkips;
+  },
   // 取打卡类型对象（供 UI 显示名称 / emoji）
   typeOf(record) {
     return DAILY_TYPES.find((t) => t.id === record.type) || null;
@@ -164,7 +182,8 @@ const DailyLogic = {
     const recoverable = broken ? 0 : (total - completed) * DAILY_CONFIG.perDay;
 
     let phase = 'ongoing';
-    if (allDone) phase = 'done';
+    // 空日程/脏数据截断时 completed 达不到 total，不得误报已完成
+    if (allDone && completed === total) phase = 'done';
     else if (broken) phase = 'failed';
 
     return {
@@ -178,7 +197,7 @@ const DailyLogic = {
       phase,
       typeCounts,
       skippedCount,
-      totalDays: DAILY_CONFIG.totalDays,
+      totalDays: total,
       deposit: DAILY_CONFIG.deposit,
     };
   },

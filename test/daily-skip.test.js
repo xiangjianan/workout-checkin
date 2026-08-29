@@ -238,3 +238,103 @@ test('computeStatus：打卡覆盖跳过后金额与日程收回顺延', () => {
   assert.equal(s.returned, 0); // 06-13 漏卡在前 → 断签，断签点前无实际打卡
   assert.equal(DailyLogic.lastCheckinDate(state2), '2026-08-01'); // 顺延收回
 });
+
+test('computeStatus：断签点之后的跳过仍计入 skippedCount，金额不变', () => {
+  const { DailyLogic } = load();
+  // 06-01 打卡，06-02 漏卡断签；06-10（断签点之后）跳过
+  const state = {
+    startDate: '2026-06-01',
+    records: { '2026-06-01': { type: 'fitness' }, '2026-06-10': { type: 'skip' } },
+  };
+  const st = DailyLogic.computeStatus(state);
+  assert.equal(st.skippedCount, 1);
+  assert.equal(st.returned, 200);
+  assert.equal(st.lost, 9800);
+});
+
+test('computeStatus：脏数据防御——空日程/超长截断不得误报已完成', () => {
+  const ft = load();
+  const { DailyLogic } = ft;
+  const invalid = DailyLogic.computeStatus({ startDate: '2026-6-1', records: {} }); // 非法 startDate → 空日程
+  assert.equal(invalid.phase, 'ongoing');
+  assert.equal(invalid.completed, 0);
+  // 400 个连续 skip 记录：buildSchedule 的 350 天防死循环上限会截断
+  const skipRecords = {};
+  for (let i = 0; i < 400; i++) skipRecords[dateOff(ft, '2026-01-01', i)] = { type: 'skip' };
+  const truncated = DailyLogic.computeStatus({ startDate: '2026-01-01', records: skipRecords });
+  assert.notEqual(truncated.phase, 'done');
+});
+
+// ---- 连跳上限 ----
+
+test('canSkip：连续跳过最多 6 天，第 7 天禁止；隔天断链重新可跳', () => {
+  const ft = load();
+  const { DailyLogic } = ft;
+  const start = '2026-06-01';
+  const records = {};
+  for (let i = 4; i <= 9; i++) records[dateOff(ft, start, i)] = { type: 'skip' }; // 06-05..06-10 连跳 6
+  const state = { startDate: start, records };
+  assert.equal(DailyLogic.canSkip(state, dateOff(ft, start, 9)), true);  // 第 6 天本身可跳
+  assert.equal(DailyLogic.canSkip(state, dateOff(ft, start, 10)), false); // 第 7 天禁止
+  assert.equal(DailyLogic.canSkip(state, dateOff(ft, start, 11)), true);  // 06-12 与前段隔了未跳的 06-11，断链
+});
+
+test('canSkip：中间打卡一天即重新计数', () => {
+  const ft = load();
+  const { DailyLogic } = ft;
+  const start = '2026-06-01';
+  const records = {};
+  for (let i = 4; i <= 9; i++) records[dateOff(ft, start, i)] = { type: 'skip' };
+  records[dateOff(ft, start, 10)] = { type: 'fitness' }; // 06-11 打卡断链
+  const state = { startDate: start, records };
+  assert.equal(DailyLogic.canSkip(state, dateOff(ft, start, 11)), true); // 06-12 重新计数
+});
+
+test('canSkip：在已有跳过段紧邻前后插入会合并计数，同样受上限约束', () => {
+  const ft = load();
+  const { DailyLogic } = ft;
+  const three = {
+    startDate: '2026-06-01',
+    records: {
+      '2026-06-06': { type: 'skip' },
+      '2026-06-07': { type: 'skip' },
+      '2026-06-08': { type: 'skip' },
+    },
+  };
+  assert.equal(DailyLogic.canSkip(three, '2026-06-05'), true); // 合并后 4 连跳
+  assert.equal(DailyLogic.canSkip(three, '2026-06-09'), true);
+  const start = '2026-06-01';
+  const sixRecords = {};
+  for (let i = 4; i <= 9; i++) sixRecords[dateOff(ft, start, i)] = { type: 'skip' };
+  const six = { startDate: start, records: sixRecords };
+  assert.equal(DailyLogic.canSkip(six, '2026-06-11'), false); // 后插并入 7 连
+  assert.equal(DailyLogic.canSkip(six, '2026-06-04'), false); // 前插并入 7 连
+});
+
+test('canSkip：非法日期返回 false', () => {
+  const { DailyLogic } = load();
+  assert.equal(DailyLogic.canSkip({ startDate: '2026-06-01', records: {} }, '2026/6/15'), false);
+});
+
+// ---- 持久化：不可变更新 ----
+
+test('DailyStore.skip：写入 skip 记录且不可变；打卡可覆盖，cancelCheckin 可撤回', () => {
+  const ft = load();
+  const { DailyStore, DailyLogic } = ft;
+  const s0 = { startDate: '2026-06-13', records: {} };
+  const s1 = DailyStore.skip(s0, '2026-06-14');
+  assert.notEqual(s1, s0);
+  assert.notEqual(s1.records, s0.records);
+  assert.equal(DailyLogic.isSkipped(s1.records['2026-06-14']), true);
+  assert.equal(typeof s1.records['2026-06-14'].at, 'string'); // 记录跳过时间
+  assert.equal('2026-06-14' in s0.records, false);            // 原状态未被污染
+
+  const s2 = DailyStore.checkin(s1, '2026-06-14', 'fitness'); // 打卡覆盖跳过
+  assert.equal(s2.records['2026-06-14'].type, 'fitness');
+  assert.equal(s1.records['2026-06-14'].type, 'skip');        // 前一状态保持不变
+
+  const s3 = DailyStore.skip(s1, '2026-06-15');
+  const s4 = DailyStore.cancelCheckin(s3, '2026-06-15');      // 取消跳过 = 删除该日记录
+  assert.equal('2026-06-15' in s4.records, false);
+  assert.equal(DailyLogic.isSkipped(s3.records['2026-06-15']), true);
+});

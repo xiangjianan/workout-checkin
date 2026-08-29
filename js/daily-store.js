@@ -51,6 +51,15 @@ const DailyStore = {
     return { ...state, startDate };
   },
 
+  // 跳过当天（生理期等特殊原因）：写入与打卡同构的 skip 记录——
+  // 不返钱、不占 50 天名额，但不断签；checkin 可直接覆盖，cancelCheckin 可撤回
+  skip(state, dateStr) {
+    return {
+      ...state,
+      records: { ...state.records, [dateStr]: { type: 'skip', at: new Date().toISOString() } },
+    };
+  },
+
   // 打卡 / 切换类型：写入当天类型与打卡时间，返回全新 state
   checkin(state, dateStr, type) {
     return {
