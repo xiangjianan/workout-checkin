@@ -1,103 +1,105 @@
-# 📅 打卡 · 两个独立对赌计划
+# 📅 Check-in · Two Independent Bet Plans
 
-一个**纯本地、零依赖**的打卡小站，包含两个互相独立的对赌计划，数据分开存储在浏览器本地（localStorage）：
+**English** | [简体中文](README.zh-CN.md)
 
-| 路径 | 页面 | 文件 |
+A **fully local, zero-dependency** check-in site containing two mutually independent bet plans, with data stored separately in each browser's local storage (localStorage):
+
+| Path | Page | File |
 |---|---|---|
-| `/`（根路径） | 📅 每日二选一打卡（健身/学习 · 50 天） | `index.html` |
-| `/100` | 🏋️ 健身打卡（100 天 · 50 次训练 · 5 项目） | `100.html` |
+| `/` (root path) | 📅 Daily either-or check-in (workout/study · 50 days) | `index.html` |
+| `/100` | 🏋️ Workout check-in (100 days · 50 sessions · 5 exercises) | `100.html` |
 
-> 本地双击打开：每日打卡是 `index.html`，健身打卡是 `100.html`。
+> To open locally by double-click: the daily check-in is `index.html`, the workout check-in is `100.html`.
 
-## 📅 每日打卡（根路径）规则
+## 📅 Daily Check-in (Root Path) Rules
 
-- **频率**：每天一次，共 **50 天**（无休息日）。
-- **二选一**：每天打卡时选 **💪 健身** 或 **📚 学习**，完成任一类即打卡成功（+¥200）。
-- **对赌**：10,000 元；每打卡一天返 **200 元**，50 天正好返完。
-- **跳过**：生理期等特殊原因可「跳过这天」——不断签、不返 ¥200、不占 50 天名额，后续日程自动顺延 1 天；最多连跳 6 天，中间打卡一天即重新计数；已跳过的当天也可以照常打卡（覆盖跳过）。
-- **断签**：某个已过去的打卡日未打卡即断签，之后金额无法返还；点击该日**补卡**可恢复。
-- 统计区单独显示「健身 / 学习」各累计多少天；打卡后可一键切换类别或取消。
+- **Frequency**: once per day, **50 days** in total (no rest days).
+- **Either-or**: each day you check in, pick **💪 workout** or **📚 study**; completing either counts as a successful check-in (+¥200).
+- **The bet**: ¥10,000; each checked-in day returns **¥200**, exactly returning the full amount over 50 days.
+- **Skipping**: for special reasons such as menstruation you can "skip this day" — the streak is not broken, ¥200 is not returned, and the day does not count toward the 50 days; later days automatically shift by 1 day. You may skip up to 6 days in a row; checking in on any day resets the count. A skipped day can still be checked in as usual (overriding the skip).
+- **Broken streak**: if a past check-in day goes unchecked, the streak is broken and the remaining money cannot be returned; click **make up** on that day to restore it.
+- The stats area separately shows how many "workout / study" days have been accumulated; after checking in you can switch the category or cancel with one click.
 
-## 🏋️ 健身打卡（/100）计划规则
+## 🏋️ Workout Check-in (/100) Plan Rules
 
-- **频率**：隔天一次（练 1 天 / 休 1 天），共 **50 次训练 / 100 天**。
-- **项目**：俯卧撑、仰卧起坐、蹲起、臂力器、哑铃。
-- **递增**：以俯卧撑为例，第 1 次 2 个、第 2 次 4 个 …… 每次 +2，直到 100 个封顶。
-- **对赌**：先交 10,000 元；每完成并打卡一次返还 **200 元**，50 次正好 10,000 元全部返还。中途任一训练日未完成打卡，则断签，之后的金额无法返还。
+- **Frequency**: every other day (1 training day / 1 rest day), for a total of **50 sessions / 100 days**.
+- **Exercises**: push-ups, sit-ups, squats, power twister, dumbbells.
+- **Progressive increase**: taking push-ups as an example — 2 reps in session 1, 4 in session 2 … +2 per session, capped at 100.
+- **The bet**: pay ¥10,000 up front; each completed and checked-in session returns **¥200**, and the full ¥10,000 is returned after 50 sessions. If any training day goes unchecked, the streak breaks and the remaining money cannot be returned.
 
-> 判定：当天 5 个项目全部达到目标个数才算“打卡成功”（+¥200）。
+> Judging rule: a day counts as "checked in successfully" (+¥200) only when all 5 exercises reach their target reps.
 
-## 使用方法
+## Usage
 
-1. 打开网站根路径（每日打卡）或 `/100`（健身打卡）；本地则双击 `index.html` / `100.html`。
-2. 首次打开默认从**今天**开始；如需修改，点右上角「设置」。
-3. 每日打卡：点当天格子 → 选 💪 健身 或 📚 学习 即完成。
-4. 健身打卡：在日历上点击某个**训练日**（带 `#序号` 的格子），逐项记录完成进度；也可点弹窗底部「一键完成当天全部」。
+1. Open the site root (daily check-in) or `/100` (workout check-in); locally, double-click `index.html` / `100.html`.
+2. On first open it starts from **today** by default; to change this, click "Settings" in the top-right corner.
+3. Daily check-in: click today's cell → choose 💪 workout or 📚 study to complete.
+4. Workout check-in: click a **training day** on the calendar (a cell with `#number`) and record per-exercise progress; you can also click "Complete all of today's sets" at the bottom of the dialog.
 
-## 局域网部署（手机也能打卡）
+## LAN Deployment (Check In from Your Phone Too)
 
-零依赖，只要本机装了 Node.js 即可：
+Zero dependencies — you only need Node.js installed on your machine:
 
-- **双击 `启动局域网服务.command`**（最简单），或在项目目录运行 `npm run lan`。
-- 终端会打印局域网地址（如 `http://192.168.x.x:8000`），手机连**同一 Wi-Fi** 后直接用浏览器打开。
-- 想换端口：`node scripts/dev-server.js --port 9000`。
-- 服务响应带 `Cache-Control: no-cache`，手机端永远拿到最新代码。
-- 首次启动如弹出 macOS 防火墙提示，请选择「允许」。
+- **Double-click `启动局域网服务.command`** (simplest), or run `npm run lan` in the project directory.
+- The terminal prints the LAN address (e.g. `http://192.168.x.x:8000`); connect your phone to the **same Wi-Fi** and open it directly in a browser.
+- To change the port: `node scripts/dev-server.js --port 9000`.
+- Responses carry `Cache-Control: no-cache`, so the phone always gets the latest code.
+- If the macOS firewall prompt appears on first launch, choose "Allow".
 
-> 注意：数据存在**各设备的浏览器本地**（localStorage），电脑和手机的数据互不同步。换设备使用时，请先在原设备点「导出」，再到新设备点「导入」。
+> Note: data is stored **locally in each device's browser** (localStorage) — computer and phone data are not synced. When switching devices, first tap "Export" on the original device, then "Import" on the new one.
 
-## 手机当成 App 用（PWA）
+## Use It Like a Mobile App (PWA)
 
-通过局域网地址打开后，可以把它装到手机主屏幕，全屏使用、断网也能打开：
+After opening via the LAN address, you can add it to your phone's home screen for full-screen use, even offline:
 
-- **iPhone（Safari）**：打开局域网地址 → 底部分享按钮 →「添加到主屏幕」。
-- **Android（Chrome）**：打开局域网地址 → 右上角菜单 →「添加到主屏幕 / 安装应用」。
+- **iPhone (Safari)**: open the LAN address → share button at the bottom → "Add to Home Screen".
+- **Android (Chrome)**: open the LAN address → menu at the top right → "Add to Home Screen / Install app".
 
-> PWA 的离线缓存（Service Worker）只在 `http(s)://` 下生效；双击 `index.html`（file://）打开时自动跳过，不影响使用。
+> The PWA offline cache (Service Worker) only works under `http(s)://`; it is skipped automatically when opening `index.html` by double-click (file://), without affecting usage.
 
-## 功能
+## Features
 
-- **日历视图**：训练日 / 休息日 / 已打卡 / 待打卡 / 已错过 一目了然，支持翻月。
-- **快速打卡**：每个项目支持 `−1 / +1 / 标为完成 / 归零`。
-- **智能分组**：点开训练日后，选择分组方案即可。整除方案一键点选（如目标 10 个 → 1组×10 / 2组×5 / 5组×2 / 10组×1）；点「✏️ 自定义」可任填组数并逐组调整数量，最后一组自动补差（如 100 → 34+33+33），合计实时校验，点「应用分组」一键应用于全部 5 个项目。
-- **批量分组 & 逐组完成**：分组方案一键应用于全部 5 个项目；点「第1组」「第2组」可把 5 个项目对应那一组一次性标记完成（适合“5 个项目各做一组 → 休息 → 再做下一组”的节奏）。分完组后组按钮直接展示，无需展开。
-- **分组顺序锁定**：前面的组没完成时，后面的组会锁定（🔒）不可勾选；取消也只能从最后一组往前依次取消，保证训练按顺序进行。
-- **打卡成功庆祝动画**：任一训练日 5 个项目全部完成时，弹出全屏撒花 + 🎉 动画 + 金币到账音效（Web Audio 合成，无需音频文件），提醒你找对方收 ¥200。已完成的日子里可点「🎉 重播动画」随时再看，设置里也有「测试打卡庆祝动画」按钮。
-- **数据统计**：已完成训练次数、距离目标剩余次数/天数、已返还/待返还/已损失金额。
-- **数据安全**：支持「导出」备份为 JSON、「导入」恢复；换浏览器或清缓存前请先备份。
+- **Calendar view**: training days / rest days / checked / pending / missed at a glance, with month navigation.
+- **Quick check-in**: each exercise supports `−1 / +1 / mark complete / reset to zero`.
+- **Smart grouping**: open a training day and pick a grouping scheme. Divisor schemes are one-click selectable (e.g. target 10 → 1 set×10 / 2 sets×5 / 5 sets×2 / 10 sets×1); tap "✏️ Custom" to set any number of sets and adjust each one, with the last set auto-balancing the remainder (e.g. 100 → 34+33+33). Totals are validated in real time, and "Apply grouping" applies the scheme to all 5 exercises at once.
+- **Batch grouping & per-set completion**: the grouping scheme applies to all 5 exercises with one click; tapping "Set 1", "Set 2", etc. marks that set across all 5 exercises complete at once (great for a rhythm of "one set of each of the 5 exercises → rest → next set"). Once grouped, the set buttons are shown directly, no expanding needed.
+- **Set order locking**: while earlier sets are incomplete, later sets are locked (🔒) and cannot be checked off; unchecking must also proceed from the last set backwards, keeping the workout in order.
+- **Success celebration animation**: when all 5 exercises of a training day are complete, a full-screen confetti + 🎉 animation + coin-arrival sound effect plays (synthesized with Web Audio, no audio files needed), reminding you to collect your ¥200. On completed days you can tap "🎉 Replay animation" anytime; Settings also has a "Test check-in celebration animation" button.
+- **Statistics**: completed sessions, remaining sessions/days to goal, refunded/pending/lost amounts.
+- **Data safety**: "Export" backs up your data as JSON and "Import" restores it; back up before switching browsers or clearing the cache.
 
-## 目录结构
+## Directory Structure
 
 ```
 work_out/
-├── index.html              # 📅 每日打卡页（根路径 /）
-├── 100.html                # 🏋️ 健身打卡页（/100）
-├── _redirects              # Cloudflare Pages 路由（旧 /daily 链接 → /）
-├── styles.css              # 样式（亮/暗自适应，两个页面共用）
-├── manifest.webmanifest        # 每日打卡 PWA 清单（start_url /）
-├── manifest-100.webmanifest    # 健身打卡 PWA 清单（start_url /100）
-├── package.json            # npm scripts：dev / lan / test
-├── 启动局域网服务.command   # 双击即部署到局域网
+├── index.html              # 📅 Daily check-in page (root path /)
+├── 100.html                # 🏋️ Workout check-in page (/100)
+├── _redirects              # Cloudflare Pages routing (old /daily links → /)
+├── styles.css              # Styles (light/dark adaptive, shared by both pages)
+├── manifest.webmanifest        # Daily check-in PWA manifest (start_url /)
+├── manifest-100.webmanifest    # Workout check-in PWA manifest (start_url /100)
+├── package.json            # npm scripts: dev / lan / test
+├── 启动局域网服务.command   # Double-click to deploy to the LAN
 ├── README.md
 ├── js/
-│   ├── logic.js    # 健身计划：配置与纯计算（日程、目标、对赌、连签）
-│   ├── store.js    # 健身计划：localStorage 持久化（不可变更新）
-│   ├── ui.js       # 健身计划：纯渲染函数（统计、日历、打卡面板）
-│   ├── app.js      # 健身计划：应用入口（状态、事件、庆祝动画与音效）
-│   ├── daily-logic.js  # 每日打卡：纯计算（50 天日程、断签、类型计数）
-│   ├── daily-store.js  # 每日打卡：localStorage 持久化（不可变更新）
-│   ├── daily-ui.js     # 每日打卡：纯渲染函数
-│   └── daily-app.js    # 每日打卡：应用入口
-├── test/                  # node --test 单元测试
+│   ├── logic.js    # Workout plan: config & pure calculations (schedule, targets, bet, streaks)
+│   ├── store.js    # Workout plan: localStorage persistence (immutable updates)
+│   ├── ui.js       # Workout plan: pure render functions (stats, calendar, check-in panel)
+│   ├── app.js      # Workout plan: app entry (state, events, celebration animation & sound)
+│   ├── daily-logic.js  # Daily check-in: pure calculations (50-day schedule, broken streaks, type counts)
+│   ├── daily-store.js  # Daily check-in: localStorage persistence (immutable updates)
+│   ├── daily-ui.js     # Daily check-in: pure render functions
+│   └── daily-app.js    # Daily check-in: app entry
+├── test/                  # node --test unit tests
 └── scripts/
-    └── dev-server.js       # 零依赖静态服务器（本机预览 + 局域网部署，支持 /100 等无扩展名路由）
+    └── dev-server.js       # Zero-dependency static server (local preview + LAN deployment, extensionless routes like /100)
 ```
 
-## 自定义
+## Customization
 
-- 想给某个项目设不同的递增节奏，编辑 `js/logic.js` 顶部 `FT_EXERCISES` 的 `start / step / max`。
-- 对赌金额/天数在 `FT_CONFIG` 中调整。
+- To give an exercise a different progression, edit `start / step / max` in `FT_EXERCISES` at the top of `js/logic.js`.
+- Bet amount/days can be adjusted in `FT_CONFIG`.
 
-## 关于“严格对赌”
+## About the "Strict Bet"
 
-为方便统计，本工具**允许补录**过去的训练日。若要严格遵循对赌规则，请自我约束、不补打卡。
+For convenience, this tool **allows backfilling** past training days. If you want to strictly follow the bet rules, rely on self-discipline and do not backfill check-ins.
